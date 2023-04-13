@@ -34,11 +34,14 @@ public class Vehicle {
     @Column(nullable = false)
     private String location;
     @ManyToOne
-    private RentalPrice price;
+    private RentalPrice rentalPrice;
     @Column(nullable = false)
     @Lob
     private Blob image;
     @OneToMany(mappedBy = "vehicle")
     private Set<RentalSession> rentalSessions;
+    @ManyToOne
+    private Company rentalCompany;
+
 
 }

@@ -14,13 +14,15 @@ public class IdentityValidationDocument {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
-
-    @OneToMany(mappedBy = "validation_document")
+    @OneToMany(mappedBy = "identityValidationDocument")
     private Set<DocumentPhoto> photos;
+    @ManyToOne
+    private Driver driver;
     @Column
     private String type;
     @Column
     private String status;
+
 
     public IdentityValidationDocument(String type, String status) {
         this.type = type;

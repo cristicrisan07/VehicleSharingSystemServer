@@ -19,7 +19,7 @@ public class RentalPrice {
     private Currency currency;
     @Column(nullable = false)
     private TimeUnit timeUnit;
-    @OneToMany(mappedBy = "rental_price")
+    @OneToMany(mappedBy = "rentalPrice")
     private Set<Vehicle> vehicles;
 
     public RentalPrice(double value, Currency currency, TimeUnit timeUnit) {

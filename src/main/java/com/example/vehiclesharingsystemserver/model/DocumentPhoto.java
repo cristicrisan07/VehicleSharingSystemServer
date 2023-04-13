@@ -18,10 +18,36 @@ public class DocumentPhoto {
     @ManyToOne
     private IdentityValidationDocument identityValidationDocument;
 
-    public DocumentPhoto(Blob photo) {
+    public DocumentPhoto(Blob photo,IdentityValidationDocument identityValidationDocument) {
         this.photo = photo;
+        this.identityValidationDocument = identityValidationDocument;
     }
 
     public DocumentPhoto() {
+
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public Blob getPhoto() {
+        return photo;
+    }
+
+    public void setPhoto(Blob photo) {
+        this.photo = photo;
+    }
+
+    public IdentityValidationDocument getIdentityValidationDocument() {
+        return identityValidationDocument;
+    }
+
+    public void setIdentityValidationDocument(IdentityValidationDocument identityValidationDocument) {
+        this.identityValidationDocument = identityValidationDocument;
     }
 }
