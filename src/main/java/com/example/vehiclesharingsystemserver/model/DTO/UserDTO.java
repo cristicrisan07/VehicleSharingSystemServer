@@ -1,12 +1,12 @@
 package com.example.vehiclesharingsystemserver.model.DTO;
 
-public class DriverDTO {
+public class UserDTO {
     private final String firstName;
     private final String lastName;
     private final AccountDTO account;
 
 
-    public DriverDTO(String firstName, String lastName, AccountDTO account) {
+    public UserDTO(String firstName, String lastName, AccountDTO account) {
         this.firstName = firstName;
         this.lastName = lastName;
         this.account = account;

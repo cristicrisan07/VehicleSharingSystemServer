@@ -1,7 +1,7 @@
 package com.example.vehiclesharingsystemserver.controller;
 
 import com.example.vehiclesharingsystemserver.model.DTO.AccountDTO;
-import com.example.vehiclesharingsystemserver.model.DTO.DriverDTO;
+import com.example.vehiclesharingsystemserver.model.DTO.UserDTO;
 import com.example.vehiclesharingsystemserver.service.DriverOperationsService;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -16,8 +16,8 @@ public class DriverController {
     }
 
     @PostMapping("/driver/register")
-    public ResponseEntity<String> register(@RequestBody DriverDTO driverDTO){
-        return ResponseEntity.ok(driverOperationsService.register(driverDTO));
+    public ResponseEntity<String> register(@RequestBody UserDTO userDTO){
+        return ResponseEntity.ok(driverOperationsService.register(userDTO));
     }
     @PostMapping("/driver/authenticate")
     public ResponseEntity<String> authenticate(@RequestBody AccountDTO accountDTO){

@@ -27,7 +27,8 @@ public class SecurityConfiguration {
                 .csrf()
                 .disable()
                 .authorizeHttpRequests()
-                .requestMatchers("/driver/register","/driver/authenticate","/driver/checkUsername")
+                .requestMatchers("/driver/register","/driver/authenticate","/driver/checkUsername"
+                ,"/administrator/register","/administrator/authenticate")
                 .permitAll()
                 .anyRequest()
                 .authenticated()

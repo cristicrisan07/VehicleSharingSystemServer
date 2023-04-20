@@ -1,7 +1,7 @@
 package com.example.vehiclesharingsystemserver.service;
 
 import com.example.vehiclesharingsystemserver.model.DTO.AccountDTO;
-import com.example.vehiclesharingsystemserver.model.DTO.DriverDTO;
+import com.example.vehiclesharingsystemserver.model.DTO.UserDTO;
 import com.example.vehiclesharingsystemserver.repository.AccountRepository;
 import com.example.vehiclesharingsystemserver.repository.DriverRepository;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -28,20 +28,20 @@ public class DriverOperationsService {
         this.jwtService = jwtService;
     }
 
-    public String register(DriverDTO driverDTO){
+    public String register(UserDTO userDTO){
 
-         String status = checkIfUsernameExists(driverDTO.getAccount().getUsername());
+         String status = checkIfUsernameExists(userDTO.getAccount().getUsername());
          if(Objects.equals(status, "DOESN'T EXIST")) {
-             if (accountRepository.findByEmailAddress(driverDTO.getAccount().getEmailAddress()).isPresent()) {
+             if (accountRepository.findByEmailAddress(userDTO.getAccount().getEmailAddress()).isPresent()) {
                  return "EMAIL_TAKEN";
              }
-             var driver = dtoConverter.fromDTOtoDriver(driverDTO);
+             var driver = dtoConverter.fromUserDTOtoDriver(userDTO);
              accountRepository.save(driver.getAccount());
              driverRepository.save(driver);
              return jwtService.generateToken(new HashMap<>(), driver.getAccount());
          }
          else {
-             return status;
+             return "ERROR: " + status;
          }
 
     }
