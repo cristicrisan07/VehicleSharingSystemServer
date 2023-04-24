@@ -35,7 +35,6 @@ public class Vehicle {
     private String location;
     @ManyToOne
     private RentalPrice rentalPrice;
-    @Column(nullable = false)
     @Lob
     private Blob image;
     @OneToMany(mappedBy = "vehicle")

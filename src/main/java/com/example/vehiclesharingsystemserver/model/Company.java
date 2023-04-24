@@ -12,11 +12,11 @@ public class Company {
     @Id
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
-    @Column(nullable = false)
+    @Column(nullable = false,unique = true)
     private String name;
-    @Column(nullable = false)
+    @Column(nullable = false,unique = true)
     private String emailAddress;
-    @Column(nullable = false)
+    @Column(nullable = false,unique = true)
     private String phoneNumber;
     @OneToMany(mappedBy = "rentalCompany")
     private Set<Vehicle> vehicles;

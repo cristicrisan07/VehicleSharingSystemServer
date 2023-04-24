@@ -1,5 +1,6 @@
 package com.example.vehiclesharingsystemserver.service;
 
+import com.example.vehiclesharingsystemserver.model.Account;
 import com.example.vehiclesharingsystemserver.model.Company;
 import com.example.vehiclesharingsystemserver.model.DTO.AccountDTO;
 import com.example.vehiclesharingsystemserver.model.DTO.CompanyDTO;
@@ -12,6 +13,7 @@ import com.example.vehiclesharingsystemserver.repository.CompanyRepository;
 import com.example.vehiclesharingsystemserver.repository.RentalCompanyManagerRepository;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
@@ -25,8 +27,9 @@ public class AdministratorOperationsService {
     private final DTOConverter dtoConverter;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
+    private final PasswordEncoder passwordEncoder;
 
-    public AdministratorOperationsService(AccountRepository accountRepository, AdministratorRepository administratorRepository, RentalCompanyManagerRepository rentalCompanyManagerRepository, CompanyRepository companyRepository, DTOConverter dtoConverter, AuthenticationManager authenticationManager, JwtService jwtService) {
+    public AdministratorOperationsService(AccountRepository accountRepository, AdministratorRepository administratorRepository, RentalCompanyManagerRepository rentalCompanyManagerRepository, CompanyRepository companyRepository, DTOConverter dtoConverter, AuthenticationManager authenticationManager, JwtService jwtService, PasswordEncoder passwordEncoder) {
         this.accountRepository = accountRepository;
         this.administratorRepository = administratorRepository;
         this.rentalCompanyManagerRepository = rentalCompanyManagerRepository;
@@ -34,6 +37,7 @@ public class AdministratorOperationsService {
         this.dtoConverter = dtoConverter;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
+        this.passwordEncoder = passwordEncoder;
     }
 
     public String register(UserDTO userDTO){
@@ -53,7 +57,7 @@ public class AdministratorOperationsService {
 
     public String checkIfUsernameExists(String username) {
         if (accountRepository.findByUsername(username).isPresent()) {
-            return "USERNAME_TAKEN";
+            return "ERROR: USERNAME_TAKEN";
         } else {
             return "DOESN'T EXIST";
         }
@@ -62,16 +66,27 @@ public class AdministratorOperationsService {
         String status = checkIfUsernameExists(userDTO.getAccount().getUsername());
         if(Objects.equals(status, "DOESN'T EXIST")) {
             if (accountRepository.findByEmailAddress(userDTO.getAccount().getEmailAddress()).isPresent()) {
-                return "EMAIL_TAKEN";
+                return "ERROR: EMAIL_TAKEN";
+            }
+            else{
+                if(accountRepository.findAccountByPhoneNumber(userDTO.getAccount().getPhoneNumber()).isPresent()){
+                    return "ERROR: PHONE_NUMBER_TAKEN";
+                }
             }
         }
             return status;
     }
 
-    public String authenticate(AccountDTO accountDTO){
-        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(accountDTO.getUsername(),accountDTO.getPassword()));
+    public String authenticate(AccountDTO accountDTO) throws NoSuchElementException{
         var account = accountRepository.findByUsername(accountDTO.getUsername()).orElseThrow();
-        return jwtService.generateToken(new HashMap<>(),account);
+        if(Objects.equals(account.getAccountType(),"administrator")){
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(accountDTO.getUsername(),accountDTO.getPassword()));
+            return jwtService.generateToken(new HashMap<>(),account);
+        }
+        else{
+            throw new NoSuchElementException();
+        }
+
     }
 
     public String addCompany(CompanyDTO companyDTO){
@@ -79,8 +94,18 @@ public class AdministratorOperationsService {
             return "ERROR: NAME_TAKEN";
         }
         else{
-            companyRepository.save(dtoConverter.fromDTOtoCompany(companyDTO));
-            return "SUCCESS";
+            if(companyRepository.findCompaniesByEmailAddress(companyDTO.getEmailAddress()).isPresent()){
+                return "ERROR: EMAIL_ADDRESS_TAKEN";
+            }
+            else {
+                if(companyRepository.findCompaniesByPhoneNumber(companyDTO.getPhoneNumber()).isPresent()){
+                    return "ERROR: PHONE_NUMBER_TAKEN";
+                }
+                else {
+                    companyRepository.save(dtoConverter.fromDTOtoCompany(companyDTO));
+                    return "SUCCESS";
+                }
+            }
         }
     }
     public String addManager(RentalCompanyManagerDTO rentalCompanyManagerDTO){
@@ -92,7 +117,7 @@ public class AdministratorOperationsService {
         var rentalCompanyManager = dtoConverter.fromDTOtoRentalCompanyManager(rentalCompanyManagerDTO);
         accountRepository.save(rentalCompanyManager.getAccount());
         rentalCompanyManagerRepository.save(rentalCompanyManager);
-        return jwtService.generateToken(new HashMap<>(), rentalCompanyManager.getAccount());
+        return "SUCCESS";
 
     }
     public List<CompanyDTO> getCompanies(){
@@ -107,6 +132,94 @@ public class AdministratorOperationsService {
         ArrayList<RentalCompanyManager> managers = new ArrayList<>();
         iterableManagers.forEach(managers::add);
         return managers.stream().map(dtoConverter::fromRentalCompanyManagerToDTO).toList();
+    }
+
+    public String updateCompany(CompanyDTO companyDTO){
+        Optional<Company> databaseCompany = companyRepository.findCompaniesByName(companyDTO.getName());
+        if(databaseCompany.isEmpty()){
+            return "ERROR: COULD_NOT_FIND_COMPANY";
+        }
+        else{
+            if(!Objects.equals(companyDTO.getEmailAddress(), databaseCompany.get().getEmailAddress()) && companyRepository.findCompaniesByEmailAddress(companyDTO.getEmailAddress()).isPresent()){
+                return "ERROR: EMAIL_ADDRESS_TAKEN";
+            }
+            else {
+                if(!Objects.equals(companyDTO.getPhoneNumber(), databaseCompany.get().getPhoneNumber()) && companyRepository.findCompaniesByPhoneNumber(companyDTO.getPhoneNumber()).isPresent()){
+                    return "ERROR: PHONE_NUMBER_TAKEN";
+                }
+                else {
+                    databaseCompany.get().setEmailAddress(companyDTO.getEmailAddress());
+                    databaseCompany.get().setPhoneNumber(companyDTO.getPhoneNumber());
+                    companyRepository.save(databaseCompany.get());
+                    return "SUCCESS";
+                }
+            }
+        }
+    }
+    public String updateManager(RentalCompanyManagerDTO rentalCompanyManagerDTO) {
+        Optional<Account> account = accountRepository.findByUsername(rentalCompanyManagerDTO.getUserDTO().getAccount().getUsername());
+        if (account.isEmpty()) {
+            return "ERROR: COULD_NOT_FIND_ACCOUNT";
+        }
+        else {
+            if (!Objects.equals(rentalCompanyManagerDTO.getUserDTO().getAccount().getEmailAddress(), account.get().getEmailAddress()) &&
+                    accountRepository.findByEmailAddress(rentalCompanyManagerDTO.getUserDTO().getAccount().getEmailAddress()).isPresent()){
+            return "ERROR: EMAIL_TAKEN";
+            }
+            else{
+            if (!Objects.equals(rentalCompanyManagerDTO.getUserDTO().getAccount().getPhoneNumber(), account.get().getPhoneNumber()) &&
+                    accountRepository.findAccountByPhoneNumber(rentalCompanyManagerDTO.getUserDTO().getAccount().getPhoneNumber()).isPresent()) {
+                return "ERROR: PHONE_NUMBER_TAKEN";
+            }
+            }
+
+            Optional<RentalCompanyManager> databaseRentalCompanyManager = rentalCompanyManagerRepository.findRentalCompanyManagerByAccount(account.get());
+            if(databaseRentalCompanyManager.isPresent()) {
+                if(!Objects.equals(rentalCompanyManagerDTO.getUserDTO().getAccount().getPassword(),"")){
+                    account.get().setPassword(passwordEncoder.encode(rentalCompanyManagerDTO.getUserDTO().getAccount().getPassword()));
+                }
+                account.get().setEmailAddress(rentalCompanyManagerDTO.getUserDTO().getAccount().getEmailAddress());
+                account.get().setPhoneNumber(rentalCompanyManagerDTO.getUserDTO().getAccount().getPhoneNumber());
+                accountRepository.save(account.get());
+                databaseRentalCompanyManager.get().setFirstName(rentalCompanyManagerDTO.getUserDTO().getFirstName());
+                databaseRentalCompanyManager.get().setLastName(rentalCompanyManagerDTO.getUserDTO().getLastName());
+                rentalCompanyManagerRepository.save(databaseRentalCompanyManager.get());
+                return "SUCCESS";
+            }else{
+                return "ERROR: COULD_NOT_FIND_MANAGER";
+            }
+
+        }
+    }
+    public String deleteManager(String username){
+        Optional<Account> databaseAccount = accountRepository.findByUsername(username);
+        if(databaseAccount.isPresent()) {
+            Optional<RentalCompanyManager> databaseManager = rentalCompanyManagerRepository.findRentalCompanyManagerByAccount(databaseAccount.get());
+            if(databaseManager.isPresent()){
+                rentalCompanyManagerRepository.delete(databaseManager.get());
+                accountRepository.delete(databaseAccount.get());
+                return "SUCCESS";
+            }else{
+                return "ERROR: COULD_NOT_FIND_MANAGER";
+            }
+        }
+        else{
+            return "ERROR: USERNAME_DOESN'T_EXIST";
+        }
+    }
+    public String deleteCompany(String name){
+        Optional<Company> databaseCompany = companyRepository.findCompaniesByName(name);
+        if(databaseCompany.isEmpty()){
+            return "ERROR: COULD_NOT_FIND_COMPANY";
+        }else{
+            for(RentalCompanyManagerDTO rentalCompanyManagerDTO:getManagers()){
+                if(Objects.equals(rentalCompanyManagerDTO.getCompanyName(),name)){
+                    return "ERROR: MANAGER_FOUND. PLEASE DELETE ALL MANAGERS OF THIS COMPANY BEFORE DELETING IT.";
+                }
+            }
+            companyRepository.delete(databaseCompany.get());
+            return "SUCCESS";
+        }
     }
 
 }

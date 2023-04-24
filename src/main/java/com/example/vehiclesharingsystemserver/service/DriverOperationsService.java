@@ -9,6 +9,7 @@ import org.springframework.security.authentication.UsernamePasswordAuthenticatio
 import org.springframework.stereotype.Service;
 
 import java.util.HashMap;
+import java.util.NoSuchElementException;
 import java.util.Objects;
 
 @Service
@@ -54,10 +55,15 @@ public class DriverOperationsService {
         }
     }
 
-    public String authenticate(AccountDTO accountDTO){
-        authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(accountDTO.getUsername(),accountDTO.getPassword()));
+    public String authenticate(AccountDTO accountDTO) throws NoSuchElementException{
         var account = accountRepository.findByUsername(accountDTO.getUsername()).orElseThrow();
-        return jwtService.generateToken(new HashMap<>(),account);
+        if(Objects.equals(account.getAccountType(),"driver")) {
+            authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(accountDTO.getUsername(), accountDTO.getPassword()));
+            return jwtService.generateToken(new HashMap<>(), account);
+        }
+        else{
+            throw new NoSuchElementException();
+        }
     }
 
 }
