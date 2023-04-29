@@ -1,21 +1,29 @@
 package com.example.vehiclesharingsystemserver.model.DTO;
 
 public class VehicleDTO {
-    public final String vin;
-    public final String manufacturer;
-    public final String model;
-    public final String rangeLeftInKm;
-    public final String yearOfManufacture;
-    public final String horsePower;
-    public final String torque;
-    public final String maximumAuthorisedMassInKg;
-    public final String numberOfSeats;
-    public final String location;
-    public final RentalPriceDTO rentalPriceDTO;
-    public final String rentalCompanyName;
+    private final String vin;
+    private final String registrationNumber;
+    private final String manufacturer;
+    private final String model;
+    private final String rangeLeftInKm;
+    private final String yearOfManufacture;
+    private final String horsePower;
+    private final String torque;
+    private final String maximumAuthorisedMassInKg;
+    private final String numberOfSeats;
+    private final String location;
+    private final RentalPriceDTO rentalPriceDTO;
+    private final String rentalCompanyName;
 
-    public VehicleDTO(String vin, String manufacturer, String model, String rangeLeftInKm, String yearOfManufacture, String horsePower, String torque, String maximumAuthorisedMassInKg, String numberOfSeats, String location, RentalPriceDTO rentalPriceDTO, String rentalCompanyName) {
+    public boolean isAvailable() {
+        return isAvailable;
+    }
+
+    private final boolean isAvailable;
+
+    public VehicleDTO(String vin, String registrationNumber, String manufacturer, String model, String rangeLeftInKm, String yearOfManufacture, String horsePower, String torque, String maximumAuthorisedMassInKg, String numberOfSeats, String location, RentalPriceDTO rentalPriceDTO, String rentalCompanyName, boolean isAvailable) {
         this.vin = vin;
+        this.registrationNumber = registrationNumber;
         this.manufacturer = manufacturer;
         this.model = model;
         this.rangeLeftInKm = rangeLeftInKm;
@@ -27,6 +35,7 @@ public class VehicleDTO {
         this.location = location;
         this.rentalPriceDTO = rentalPriceDTO;
         this.rentalCompanyName = rentalCompanyName;
+        this.isAvailable = isAvailable;
     }
 
     public String getVin() {
@@ -76,4 +85,5 @@ public class VehicleDTO {
     public String getRentalCompanyName() {
         return rentalCompanyName;
     }
+    public String getRegistrationNumber() {return registrationNumber;}
 }
