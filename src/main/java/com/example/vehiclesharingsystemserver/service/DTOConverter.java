@@ -2,15 +2,15 @@ package com.example.vehiclesharingsystemserver.service;
 
 import com.example.vehiclesharingsystemserver.model.*;
 import com.example.vehiclesharingsystemserver.model.DTO.*;
-import com.example.vehiclesharingsystemserver.repository.CompanyRepository;
-import com.example.vehiclesharingsystemserver.repository.RentalPriceRepository;
+import com.example.vehiclesharingsystemserver.repository.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import java.sql.Timestamp;
+import java.time.Instant;
 import java.util.Currency;
-import java.util.Objects;
+import java.util.NoSuchElementException;
 import java.util.Optional;
-import java.util.concurrent.TimeUnit;
 
 @Service
 public class DTOConverter {
@@ -18,11 +18,19 @@ public class DTOConverter {
     private final PasswordEncoder passwordEncoder;
     private final CompanyRepository companyRepository;
     private final RentalPriceRepository rentalPriceRepository;
+    private final AccountRepository accountRepository;
+    private final DriverRepository driverRepository;
+    private final VehicleRepository vehicleRepository;
+    private final RentalSessionRepository rentalSessionRepository;
 
-    public DTOConverter(PasswordEncoder passwordEncoder, CompanyRepository companyRepository, RentalPriceRepository rentalPriceRepository) {
+    public DTOConverter(PasswordEncoder passwordEncoder, CompanyRepository companyRepository, RentalPriceRepository rentalPriceRepository, AccountRepository accountRepository, DriverRepository driverRepository, VehicleRepository vehicleRepository, RentalSessionRepository rentalSessionRepository) {
         this.passwordEncoder = passwordEncoder;
         this.companyRepository = companyRepository;
         this.rentalPriceRepository = rentalPriceRepository;
+        this.accountRepository = accountRepository;
+        this.driverRepository = driverRepository;
+        this.vehicleRepository = vehicleRepository;
+        this.rentalSessionRepository = rentalSessionRepository;
     }
 
 
@@ -131,6 +139,29 @@ public class DTOConverter {
                 fromRentalPriceToDTO(vehicle.getRentalPrice()),
                 vehicle.getRentalCompany().getName(),
                 vehicle.isAvailable());
+    }
+
+    public ActiveSubscriptionDTO fromActiveSubscriptionToDTO(ActiveSubscription activeSubscription){
+        return new ActiveSubscriptionDTO(activeSubscription.getId().toString(),
+                fromSubscriptionToDTO(activeSubscription.getSubscription()),
+                activeSubscription.getStartDate().toString(),
+                activeSubscription.getEndDate().toString());
+    }
+
+    public RentalSession fromDTOtoRentalSession(RentalSessionDTO rentalSessionDTO) throws NoSuchElementException,Exception {
+        var databaseAccount = accountRepository.findByUsername(rentalSessionDTO.getDriverUsername())
+                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_ACCOUNT")));
+        var databaseDriver = driverRepository.findByAccount(databaseAccount)
+                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_DRIVER")));
+        var databaseVehicle = vehicleRepository.findVehicleByVin(rentalSessionDTO.getVehicleVIN())
+                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_VEHICLE")));
+        var vehicleRentalSession = rentalSessionRepository.findRentalSessionByVehicle(databaseVehicle);
+        if(vehicleRentalSession.isPresent()){
+            return null;
+        }
+        else{
+            return new RentalSession(databaseDriver,databaseVehicle,Timestamp.valueOf(rentalSessionDTO.getStartTime()));
+        }
     }
 }
 

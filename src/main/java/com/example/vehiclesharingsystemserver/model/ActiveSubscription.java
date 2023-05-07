@@ -65,4 +65,12 @@ public class ActiveSubscription{
     public void setPayment(Payment payment) {
         this.payment = payment;
     }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
 }

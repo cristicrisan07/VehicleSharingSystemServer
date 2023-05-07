@@ -11,6 +11,8 @@ public class Payment {
     @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
 
+    @Column(nullable = false)
+    private double value;
     @OneToOne
     @JoinColumn(name = "card_id", referencedColumnName = "id")
     private Card card;
@@ -22,8 +24,9 @@ public class Payment {
     public Payment(){
 
     }
-    public Payment(Card card) {
+    public Payment(Card card,double value) {
         this.card = card;
+        this.value = value;
     }
 
     public Payment(ActiveSubscription activeSubscription) {
@@ -44,5 +47,13 @@ public class Payment {
 
     public void setActiveSubscription(ActiveSubscription activeSubscription) {
         this.activeSubscription = activeSubscription;
+    }
+
+    public double getValue() {
+        return value;
+    }
+
+    public void setValue(double value) {
+        this.value = value;
     }
 }

@@ -26,16 +26,61 @@ public class RentalSession {
     @JoinColumn(name = "payment",referencedColumnName = "id")
     private Payment payment;
 
-    public RentalSession(Driver driver, Vehicle vehicle, Timestamp startTime, Timestamp endTime, double cost, Payment payment) {
+    public RentalSession(Driver driver, Vehicle vehicle, Timestamp startTime) {
         this.driver = driver;
         this.vehicle = vehicle;
         this.startTime = startTime;
-        this.endTime = endTime;
-        this.cost = cost;
-        this.payment = payment;
     }
 
     public RentalSession() {
 
+    }
+
+    public Driver getDriver() {
+        return driver;
+    }
+
+    public void setDriver(Driver driver) {
+        this.driver = driver;
+    }
+
+    public Vehicle getVehicle() {
+        return vehicle;
+    }
+
+    public void setVehicle(Vehicle vehicle) {
+        this.vehicle = vehicle;
+    }
+
+    public Timestamp getStartTime() {
+        return startTime;
+    }
+
+    public void setStartTime(Timestamp startTime) {
+        this.startTime = startTime;
+    }
+
+    public Timestamp getEndTime() {
+        return endTime;
+    }
+
+    public void setEndTime(Timestamp endTime) {
+        this.endTime = endTime;
+    }
+
+    public Payment getPayment() {
+        return payment;
+    }
+
+    public void setPayment(Payment payment) {
+        this.payment = payment;
+    }
+
+    public double getCost() {
+        return cost;
+    }
+
+    public void setCost(double cost) {
+        this.cost = cost;
     }
 }
