@@ -39,7 +39,7 @@ public class ManagerController {
 
     @GetMapping("/manager/getVehiclesOfCompany/{companyName}")
     public ResponseEntity<List<VehicleDTO>> getVehiclesOfCompany(@PathVariable String companyName){
-        List<VehicleDTO> vehicles = rentalCompanyManagerOperationsService.getVehiclesOfCompany();
+        List<VehicleDTO> vehicles = rentalCompanyManagerOperationsService.getVehiclesOfCompany(companyName);
         return ResponseEntity.status(HttpStatus.OK).body(vehicles);
     }
     @PostMapping("/manager/updateVehicle")

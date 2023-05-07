@@ -18,11 +18,11 @@ public class RentalPrice {
     @Column(nullable = false)
     private Currency currency;
     @Column(nullable = false)
-    private TimeUnit timeUnit;
+    private String timeUnit;
     @OneToMany(mappedBy = "rentalPrice")
     private Set<Vehicle> vehicles;
 
-    public RentalPrice(double value, Currency currency, TimeUnit timeUnit) {
+    public RentalPrice(double value, Currency currency, String timeUnit) {
         this.value = value;
         this.currency = currency;
         this.timeUnit = timeUnit;
@@ -48,11 +48,11 @@ public class RentalPrice {
         this.currency = currency;
     }
 
-    public TimeUnit getTimeUnit() {
+    public String getTimeUnit() {
         return timeUnit;
     }
 
-    public void setTimeUnit(TimeUnit timeUnit) {
+    public void setTimeUnit(String timeUnit) {
         this.timeUnit = timeUnit;
     }
 

@@ -43,21 +43,12 @@ public class Vehicle {
     private Set<RentalSession> rentalSessions;
     @ManyToOne
     private Company rentalCompany;
-
-    public boolean isAvailable() {
-        return isAvailable;
-    }
-
-    public void setAvailable(boolean available) {
-        isAvailable = available;
-    }
-
     @Column(nullable = false)
-    private boolean isAvailable;
+    private boolean available;
 
     public Vehicle(String vin, String registrationNumber, String manufacturer, String model, int rangeLeftInKm, int yearOfManufacture,
                    int horsePower, int torque, int maximumAuthorisedMassInKg, int numberOfSeats,
-                   String location, RentalPrice rentalPrice, Company rentalCompany,boolean isAvailable) {
+                   String location, RentalPrice rentalPrice, Company rentalCompany,boolean available) {
         this.vin = vin;
         this.registrationNumber = registrationNumber;
         this.manufacturer = manufacturer;
@@ -71,7 +62,7 @@ public class Vehicle {
         this.location = location;
         this.rentalPrice = rentalPrice;
         this.rentalCompany = rentalCompany;
-        this.isAvailable = isAvailable;
+        this.available = available;
     }
 
     public Vehicle() {
@@ -196,6 +187,14 @@ public class Vehicle {
 
     public void setRentalCompany(Company rentalCompany) {
         this.rentalCompany = rentalCompany;
+    }
+
+    public boolean isAvailable() {
+        return available;
+    }
+
+    public void setAvailable(boolean available) {
+        this.available = available;
     }
 }
 

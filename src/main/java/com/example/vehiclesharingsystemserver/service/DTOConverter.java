@@ -67,38 +67,38 @@ public class DTOConverter {
     }
 
     public RentalPrice fromDTOtoRentalPrice(RentalPriceDTO rentalPriceDTO) throws NumberFormatException{
-        var timeUnit = TimeUnit.HOURS;
-        if( Objects.equals(rentalPriceDTO.getTimeUnit(),"minute")){
-            timeUnit = TimeUnit.MINUTES;
-        }
-        else{
-            if(Objects.equals(rentalPriceDTO.getTimeUnit(),"day")){
-                timeUnit = TimeUnit.DAYS;
-            }
-        }
         var value  = Double.parseDouble(rentalPriceDTO.getValue());
         var currency = Currency.getInstance(rentalPriceDTO.getCurrency());
-        Optional<RentalPrice> databaseRentalPrice = rentalPriceRepository.findRentalPriceByValueAndCurrencyAndTimeUnit(value,currency,timeUnit);
-        return databaseRentalPrice.orElse(new RentalPrice(value, Currency.getInstance(rentalPriceDTO.getCurrency()),timeUnit));
+        Optional<RentalPrice> databaseRentalPrice = rentalPriceRepository.findRentalPriceByValueAndCurrencyAndTimeUnit(value,currency,rentalPriceDTO.getTimeUnit());
+        if(databaseRentalPrice.isPresent()){
+            return databaseRentalPrice.get();
+        }
+        else{
+            var rentalPrice = new RentalPrice(value, Currency.getInstance(rentalPriceDTO.getCurrency()), rentalPriceDTO.getTimeUnit());
+            rentalPriceRepository.save(rentalPrice);
+            return rentalPrice;
+        }
     }
 
     public RentalPriceDTO fromRentalPriceToDTO(RentalPrice rentalPrice){
-        var timeUnit = "hour";
-        if(Objects.equals(rentalPrice.getTimeUnit(),TimeUnit.MINUTES)) {
-            timeUnit = "minute";
-        }else{
-            if(Objects.equals(rentalPrice.getTimeUnit(),TimeUnit.DAYS)){
-                timeUnit = "day";
-            }
-        }
         var value = String.valueOf(rentalPrice.getValue());
-        return new RentalPriceDTO(value,rentalPrice.getCurrency().getSymbol(),timeUnit);
+        return new RentalPriceDTO(value,rentalPrice.getCurrency().getSymbol(),rentalPrice.getTimeUnit());
+    }
+
+    public Subscription fromDTOtoSubscription(SubscriptionDTO subscriptionDTO){
+        var rentalPrice = fromDTOtoRentalPrice(subscriptionDTO.getRentalPriceDTO());
+        return new Subscription(subscriptionDTO.getName(),rentalPrice,subscriptionDTO.getKilometersLimit());
+    }
+
+    public SubscriptionDTO fromSubscriptionToDTO(Subscription subscription){
+        return new SubscriptionDTO(subscription.getId().toString(), subscription.getName(),
+                subscription.getKilometersLimit(),
+                fromRentalPriceToDTO(subscription.getRentalPrice()));
     }
 
     public Vehicle fromDTOtoVehicle(VehicleDTO vehicleDTO) throws NumberFormatException{
         Optional<Company> company = companyRepository.findCompaniesByName(vehicleDTO.getRentalCompanyName());
         var rentalPrice = fromDTOtoRentalPrice(vehicleDTO.getRentalPriceDTO());
-        rentalPriceRepository.save(rentalPrice);
 
         return company.map(value -> new Vehicle(vehicleDTO.getVin(),
                 vehicleDTO.getRegistrationNumber(),

@@ -1,15 +1,9 @@
 package com.example.vehiclesharingsystemserver.service;
 
-import com.example.vehiclesharingsystemserver.model.DTO.AccountDTO;
-import com.example.vehiclesharingsystemserver.model.DTO.LoggedInManagerDTO;
-import com.example.vehiclesharingsystemserver.model.DTO.RentalCompanyManagerDTO;
-import com.example.vehiclesharingsystemserver.model.DTO.VehicleDTO;
-import com.example.vehiclesharingsystemserver.model.RentalCompanyManager;
+import com.example.vehiclesharingsystemserver.model.Company;
+import com.example.vehiclesharingsystemserver.model.DTO.*;
 import com.example.vehiclesharingsystemserver.model.Vehicle;
-import com.example.vehiclesharingsystemserver.repository.AccountRepository;
-import com.example.vehiclesharingsystemserver.repository.RentalCompanyManagerRepository;
-import com.example.vehiclesharingsystemserver.repository.RentalPriceRepository;
-import com.example.vehiclesharingsystemserver.repository.VehicleRepository;
+import com.example.vehiclesharingsystemserver.repository.*;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Service;
@@ -19,14 +13,16 @@ import java.util.*;
 @Service
 public class RentalCompanyManagerOperationsService {
     private final RentalCompanyManagerRepository rentalCompanyManagerRepository;
+    private final CompanyRepository companyRepository;
     private final VehicleRepository vehicleRepository;
     private final AccountRepository accountRepository;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final DTOConverter dtoConverter;
 
-    public RentalCompanyManagerOperationsService(RentalCompanyManagerRepository rentalCompanyManagerRepository, VehicleRepository vehicleRepository, AccountRepository accountRepository, AuthenticationManager authenticationManager, JwtService jwtService, DTOConverter dtoConverter) {
+    public RentalCompanyManagerOperationsService(RentalCompanyManagerRepository rentalCompanyManagerRepository, CompanyRepository companyRepository, VehicleRepository vehicleRepository, AccountRepository accountRepository, AuthenticationManager authenticationManager, JwtService jwtService, DTOConverter dtoConverter) {
         this.rentalCompanyManagerRepository = rentalCompanyManagerRepository;
+        this.companyRepository = companyRepository;
         this.vehicleRepository = vehicleRepository;
         this.accountRepository = accountRepository;
         this.authenticationManager = authenticationManager;
@@ -73,11 +69,17 @@ public class RentalCompanyManagerOperationsService {
         }
     }
 
-    public List<VehicleDTO> getVehiclesOfCompany(){
-        Iterable<Vehicle> iterableVehicles = vehicleRepository.findAll();
-        ArrayList<Vehicle> vehicles = new ArrayList<>();
-        iterableVehicles.forEach(vehicles::add);
-        return vehicles.stream().map(dtoConverter::fromVehicleToDTO).toList();
+    public List<VehicleDTO> getVehiclesOfCompany(String companyName){
+        Optional<Company> databaseCompany = companyRepository.findCompaniesByName(companyName);
+        if(databaseCompany.isEmpty()){
+            return null;
+        }
+        else {
+            Iterable<Vehicle> iterableVehicles = vehicleRepository.findAllByRentalCompany(databaseCompany.get());
+            ArrayList<Vehicle> vehicles = new ArrayList<>();
+            iterableVehicles.forEach(vehicles::add);
+            return vehicles.stream().map(dtoConverter::fromVehicleToDTO).toList();
+        }
     }
 
     public String updateVehicle(VehicleDTO vehicleDTO){

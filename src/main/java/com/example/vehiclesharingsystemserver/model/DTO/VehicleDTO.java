@@ -14,14 +14,9 @@ public class VehicleDTO {
     private final String location;
     private final RentalPriceDTO rentalPriceDTO;
     private final String rentalCompanyName;
+    private final boolean available;
 
-    public boolean isAvailable() {
-        return isAvailable;
-    }
-
-    private final boolean isAvailable;
-
-    public VehicleDTO(String vin, String registrationNumber, String manufacturer, String model, String rangeLeftInKm, String yearOfManufacture, String horsePower, String torque, String maximumAuthorisedMassInKg, String numberOfSeats, String location, RentalPriceDTO rentalPriceDTO, String rentalCompanyName, boolean isAvailable) {
+    public VehicleDTO(String vin, String registrationNumber, String manufacturer, String model, String rangeLeftInKm, String yearOfManufacture, String horsePower, String torque, String maximumAuthorisedMassInKg, String numberOfSeats, String location, RentalPriceDTO rentalPriceDTO, String rentalCompanyName, boolean available) {
         this.vin = vin;
         this.registrationNumber = registrationNumber;
         this.manufacturer = manufacturer;
@@ -35,7 +30,7 @@ public class VehicleDTO {
         this.location = location;
         this.rentalPriceDTO = rentalPriceDTO;
         this.rentalCompanyName = rentalCompanyName;
-        this.isAvailable = isAvailable;
+        this.available = available;
     }
 
     public String getVin() {
@@ -86,4 +81,8 @@ public class VehicleDTO {
         return rentalCompanyName;
     }
     public String getRegistrationNumber() {return registrationNumber;}
+
+    public boolean isAvailable() {
+        return available;
+    }
 }

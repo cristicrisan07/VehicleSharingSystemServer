@@ -1,9 +1,7 @@
 package com.example.vehiclesharingsystemserver.controller;
 
-import com.example.vehiclesharingsystemserver.model.DTO.AccountDTO;
-import com.example.vehiclesharingsystemserver.model.DTO.CompanyDTO;
-import com.example.vehiclesharingsystemserver.model.DTO.RentalCompanyManagerDTO;
-import com.example.vehiclesharingsystemserver.model.DTO.UserDTO;
+import com.example.vehiclesharingsystemserver.model.DTO.*;
+import com.example.vehiclesharingsystemserver.model.Subscription;
 import com.example.vehiclesharingsystemserver.service.AdministratorOperationsService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -43,6 +41,10 @@ public class AdministratorController {
     public ResponseEntity<String> addManager(@RequestBody RentalCompanyManagerDTO rentalCompanyManagerDTO){
         return ResponseEntity.ok(administratorOperationsService.addManager(rentalCompanyManagerDTO));
     }
+    @PostMapping("/administrator/addSubscription")
+    public ResponseEntity<String> addSubscription(@RequestBody SubscriptionDTO subscriptionDTO){
+        return ResponseEntity.ok(administratorOperationsService.addSubscription(subscriptionDTO));
+    }
     @GetMapping( "/administrator/getCompanies")
     public ResponseEntity<List<CompanyDTO>> getCompanies(){
         List<CompanyDTO> companies = administratorOperationsService.getCompanies();
@@ -52,6 +54,15 @@ public class AdministratorController {
     public ResponseEntity<List<RentalCompanyManagerDTO>> getManagers(){
         List<RentalCompanyManagerDTO> managers = administratorOperationsService.getManagers();
         return ResponseEntity.status(HttpStatus.OK).body(managers);
+    }
+    @GetMapping("/administrator/getAvailableSubscriptions")
+    public ResponseEntity<List<SubscriptionDTO>> getSubscription(){
+        List<SubscriptionDTO> subscriptions = administratorOperationsService.getAvailableSubscriptions();
+        return ResponseEntity.status(HttpStatus.OK).body(subscriptions);
+    }
+    @PostMapping("/administrator/updateSubscription")
+    public ResponseEntity<String> updateSubscription(@RequestBody SubscriptionDTO subscriptionDTO){
+        return ResponseEntity.ok(administratorOperationsService.updateSubscription(subscriptionDTO));
     }
     @PostMapping("/administrator/updateCompany")
     public ResponseEntity<String> updateCompany(@RequestBody CompanyDTO companyDTO){
@@ -69,6 +80,11 @@ public class AdministratorController {
     public ResponseEntity<String> deleteCompany(@PathVariable String name){
         return ResponseEntity.ok(administratorOperationsService.deleteCompany(name));
     }
+    @DeleteMapping("/administrator/deleteSubscription/{id}")
+    public ResponseEntity<String> deleteSubscription(@PathVariable String id){
+        return ResponseEntity.ok(administratorOperationsService.deleteSubscription(id));
+    }
+
 
 
 

@@ -2,15 +2,10 @@ package com.example.vehiclesharingsystemserver.service;
 
 import com.example.vehiclesharingsystemserver.model.Account;
 import com.example.vehiclesharingsystemserver.model.Company;
-import com.example.vehiclesharingsystemserver.model.DTO.AccountDTO;
-import com.example.vehiclesharingsystemserver.model.DTO.CompanyDTO;
-import com.example.vehiclesharingsystemserver.model.DTO.RentalCompanyManagerDTO;
-import com.example.vehiclesharingsystemserver.model.DTO.UserDTO;
+import com.example.vehiclesharingsystemserver.model.DTO.*;
 import com.example.vehiclesharingsystemserver.model.RentalCompanyManager;
-import com.example.vehiclesharingsystemserver.repository.AccountRepository;
-import com.example.vehiclesharingsystemserver.repository.AdministratorRepository;
-import com.example.vehiclesharingsystemserver.repository.CompanyRepository;
-import com.example.vehiclesharingsystemserver.repository.RentalCompanyManagerRepository;
+import com.example.vehiclesharingsystemserver.model.Subscription;
+import com.example.vehiclesharingsystemserver.repository.*;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -24,16 +19,18 @@ public class AdministratorOperationsService {
     private final AdministratorRepository administratorRepository;
     private final RentalCompanyManagerRepository rentalCompanyManagerRepository;
     private final CompanyRepository companyRepository;
+    private final SubscriptionRepository subscriptionRepository;
     private final DTOConverter dtoConverter;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
 
-    public AdministratorOperationsService(AccountRepository accountRepository, AdministratorRepository administratorRepository, RentalCompanyManagerRepository rentalCompanyManagerRepository, CompanyRepository companyRepository, DTOConverter dtoConverter, AuthenticationManager authenticationManager, JwtService jwtService, PasswordEncoder passwordEncoder) {
+    public AdministratorOperationsService(AccountRepository accountRepository, AdministratorRepository administratorRepository, RentalCompanyManagerRepository rentalCompanyManagerRepository, CompanyRepository companyRepository, SubscriptionRepository subscriptionRepository, DTOConverter dtoConverter, AuthenticationManager authenticationManager, JwtService jwtService, PasswordEncoder passwordEncoder) {
         this.accountRepository = accountRepository;
         this.administratorRepository = administratorRepository;
         this.rentalCompanyManagerRepository = rentalCompanyManagerRepository;
         this.companyRepository = companyRepository;
+        this.subscriptionRepository = subscriptionRepository;
         this.dtoConverter = dtoConverter;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
@@ -120,6 +117,17 @@ public class AdministratorOperationsService {
         return "SUCCESS";
 
     }
+
+    public String addSubscription(SubscriptionDTO subscriptionDTO){
+        boolean status = subscriptionRepository.findSubscriptionByName(subscriptionDTO.getName()).isPresent();
+        if(status){
+            return "ERROR: NAME_TAKEN";
+        }
+        else{
+            subscriptionRepository.save(dtoConverter.fromDTOtoSubscription(subscriptionDTO));
+            return subscriptionRepository.findSubscriptionByName(subscriptionDTO.getName()).get().getId().toString();
+        }
+    }
     public List<CompanyDTO> getCompanies(){
         Iterable<Company> iterableCompanies = companyRepository.findAll();
         ArrayList<Company> companies = new ArrayList<>();
@@ -132,6 +140,13 @@ public class AdministratorOperationsService {
         ArrayList<RentalCompanyManager> managers = new ArrayList<>();
         iterableManagers.forEach(managers::add);
         return managers.stream().map(dtoConverter::fromRentalCompanyManagerToDTO).toList();
+    }
+
+    public List<SubscriptionDTO> getAvailableSubscriptions(){
+        Iterable<Subscription> iterableSubscriptions = subscriptionRepository.findAll();
+        ArrayList<Subscription> subscriptions = new ArrayList<>();
+        iterableSubscriptions.forEach(subscriptions::add);
+        return subscriptions.stream().map(dtoConverter::fromSubscriptionToDTO).toList();
     }
 
     public String updateCompany(CompanyDTO companyDTO){
@@ -189,6 +204,36 @@ public class AdministratorOperationsService {
                 return "ERROR: COULD_NOT_FIND_MANAGER";
             }
 
+        }
+    }
+
+    public String updateSubscription(SubscriptionDTO subscriptionDTO) {
+
+        Optional<Subscription> subscription = subscriptionRepository.findById(UUID.fromString(subscriptionDTO.getId()));
+        if (subscription.isEmpty()) {
+            return "ERROR: COULD_NOT_FIND_SUBSCRIPTION_WITH_THIS_ID";
+        } else {
+            if (!Objects.equals(subscriptionDTO.getName(), subscription.get().getName()) &&
+                    subscriptionRepository.findSubscriptionByName(subscriptionDTO.getName()).isPresent()) {
+                return "ERROR: NAME_TAKEN";
+            }
+        }
+
+        subscription.get().setName(subscriptionDTO.getName());
+        subscription.get().setRentalPrice(dtoConverter.fromDTOtoRentalPrice(subscriptionDTO.getRentalPriceDTO()));
+        subscription.get().setKilometersLimit(subscriptionDTO.getKilometersLimit());
+        subscriptionRepository.save(subscription.get());
+        return "SUCCESS";
+    }
+
+    public String deleteSubscription(String id){
+        Optional<Subscription> subscription = subscriptionRepository.findById(UUID.fromString(id));
+        if(subscription.isEmpty()){
+            return "ERROR: COULD_NOT_FIND_SUBSCRIPTION_WITH_THIS_ID";
+        }
+        else{
+            subscriptionRepository.delete(subscription.get());
+            return "SUCCESS";
         }
     }
     public String deleteManager(String username){
