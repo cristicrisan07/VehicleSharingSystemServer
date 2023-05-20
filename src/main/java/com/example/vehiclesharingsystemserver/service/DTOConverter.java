@@ -6,8 +6,7 @@ import com.example.vehiclesharingsystemserver.repository.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import java.sql.Timestamp;
-import java.time.Instant;
+import java.time.LocalDateTime;
 import java.util.Currency;
 import java.util.NoSuchElementException;
 import java.util.Optional;
@@ -32,7 +31,6 @@ public class DTOConverter {
         this.vehicleRepository = vehicleRepository;
         this.rentalSessionRepository = rentalSessionRepository;
     }
-
 
     public Driver fromUserDTOtoDriver(UserDTO userDTO) {
         return new Driver(userDTO.getFirstName(), userDTO.getLastName(), fromDTOtoAccount(userDTO.getAccount()));
@@ -148,20 +146,45 @@ public class DTOConverter {
                 activeSubscription.getEndDate().toString());
     }
 
-    public RentalSession fromDTOtoRentalSession(RentalSessionDTO rentalSessionDTO) throws NoSuchElementException,Exception {
+    public RentalSession fromDTOtoRentalSession(RentalSessionDTO rentalSessionDTO) throws NoSuchElementException {
         var databaseAccount = accountRepository.findByUsername(rentalSessionDTO.getDriverUsername())
                 .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_ACCOUNT")));
         var databaseDriver = driverRepository.findByAccount(databaseAccount)
                 .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_DRIVER")));
         var databaseVehicle = vehicleRepository.findVehicleByVin(rentalSessionDTO.getVehicleVIN())
                 .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_VEHICLE")));
-        var vehicleRentalSession = rentalSessionRepository.findRentalSessionByVehicle(databaseVehicle);
+        var vehicleRentalSession = rentalSessionRepository.findRentalSessionByVehicleAndEndTime(databaseVehicle,null);
         if(vehicleRentalSession.isPresent()){
             return null;
         }
         else{
-            return new RentalSession(databaseDriver,databaseVehicle,Timestamp.valueOf(rentalSessionDTO.getStartTime()));
+            return new RentalSession(databaseDriver,databaseVehicle, LocalDateTime.parse(rentalSessionDTO.getStartTime()));
         }
+    }
+
+    public CurrentRentalSessionDTO fromRentalSessionToCurrentRentalSessionDTO(RentalSession rentalSession){
+        return new CurrentRentalSessionDTO(rentalSession.getId().toString(), fromVehicleToDTO(rentalSession.getVehicle()),
+                rentalSession.getStartTime().toString(), rentalSession.getEndTime() == null ? null : rentalSession.getEndTime().toString(), rentalSession.getCost());
+    }
+
+    public VehiclePendingUpdate fromVehicleDTOtoVehiclePendingUpdate(VehicleDTO vehicleDTO)throws NumberFormatException{
+        Optional<Company> company = companyRepository.findCompaniesByName(vehicleDTO.getRentalCompanyName());
+        var rentalPrice = fromDTOtoRentalPrice(vehicleDTO.getRentalPriceDTO());
+
+        return company.map(value -> new VehiclePendingUpdate(vehicleDTO.getVin(),
+                vehicleDTO.getRegistrationNumber(),
+                vehicleDTO.getManufacturer(),
+                vehicleDTO.getModel(),
+                Integer.parseInt(vehicleDTO.getRangeLeftInKm()),
+                Integer.parseInt(vehicleDTO.getYearOfManufacture()),
+                Integer.parseInt(vehicleDTO.getHorsePower()),
+                Integer.parseInt(vehicleDTO.getTorque()),
+                Integer.parseInt(vehicleDTO.getMaximumAuthorisedMassInKg()),
+                Integer.parseInt(vehicleDTO.getNumberOfSeats()),
+                vehicleDTO.getLocation(),
+                rentalPrice,
+                value,
+                vehicleDTO.isAvailable())).orElse(null);
     }
 }
 

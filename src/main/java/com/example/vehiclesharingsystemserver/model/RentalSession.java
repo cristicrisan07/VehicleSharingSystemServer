@@ -2,7 +2,7 @@ package com.example.vehiclesharingsystemserver.model;
 
 import jakarta.persistence.*;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -17,16 +17,16 @@ public class RentalSession {
     @ManyToOne
     private Vehicle vehicle;
     @Column(nullable = false)
-    private Timestamp startTime;
-    @Column(nullable = false)
-    private Timestamp endTime;
+    private LocalDateTime startTime;
+    @Column
+    private LocalDateTime endTime;
     @Column(nullable = false)
     private double cost;
     @OneToOne
     @JoinColumn(name = "payment",referencedColumnName = "id")
     private Payment payment;
 
-    public RentalSession(Driver driver, Vehicle vehicle, Timestamp startTime) {
+    public RentalSession(Driver driver, Vehicle vehicle, LocalDateTime startTime) {
         this.driver = driver;
         this.vehicle = vehicle;
         this.startTime = startTime;
@@ -52,19 +52,19 @@ public class RentalSession {
         this.vehicle = vehicle;
     }
 
-    public Timestamp getStartTime() {
+    public LocalDateTime getStartTime() {
         return startTime;
     }
 
-    public void setStartTime(Timestamp startTime) {
+    public void setStartTime(LocalDateTime startTime) {
         this.startTime = startTime;
     }
 
-    public Timestamp getEndTime() {
+    public LocalDateTime getEndTime() {
         return endTime;
     }
 
-    public void setEndTime(Timestamp endTime) {
+    public void setEndTime(LocalDateTime endTime) {
         this.endTime = endTime;
     }
 
@@ -82,5 +82,9 @@ public class RentalSession {
 
     public void setCost(double cost) {
         this.cost = cost;
+    }
+
+    public UUID getId() {
+        return id;
     }
 }

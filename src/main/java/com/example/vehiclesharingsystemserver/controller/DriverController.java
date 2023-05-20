@@ -7,6 +7,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Currency;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -73,7 +74,7 @@ public class DriverController {
         }
     }
 
-    @PostMapping("/driver/endRentalSession")
+    @PutMapping("/driver/endRentalSession")
     public ResponseEntity<String> endRentalSession(@RequestBody RentalSessionDTO rentalSessionDTO) {
         try{
             String status = driverOperationsService.endRentalSession(rentalSessionDTO);
@@ -83,7 +84,35 @@ public class DriverController {
         }
     }
 
+    @PutMapping("/driver/payRentalSession")
+    public ResponseEntity<String> payRentalSession(@RequestBody PaymentDTO paymentDTO) {
+        try{
+            String status = driverOperationsService.payForRentalSession(paymentDTO);
+            return ResponseEntity.ok(status);
+        }catch (NoSuchElementException e){
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(e.getMessage());
+        }
+    }
 
+    @PutMapping("/driver/updateRentalSession")
+    public ResponseEntity<String> updateRentalSession(@RequestBody RentalSessionDTO rentalSessionDTO){
+        try{
+            String status = driverOperationsService.updateRentalSession(rentalSessionDTO);
+            return ResponseEntity.ok(status);
+        }catch (NoSuchElementException e){
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(e.getMessage());
+        }
+    }
 
+    @GetMapping("/driver/getCurrentRentalSession/{username}")
+    public ResponseEntity<CurrentRentalSessionDTO> getCurrentRentalSession(@PathVariable String username){
+        try{
+            CurrentRentalSessionDTO currentRentalSessionDTO = driverOperationsService.getCurrentRentalSession(username);
+            return ResponseEntity.ok(currentRentalSessionDTO);
+        }catch(NoSuchElementException e) {
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(null);
+        }
+    }
 
 }

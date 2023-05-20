@@ -7,8 +7,8 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Service;
 
-import java.sql.Timestamp;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
 
@@ -21,17 +21,19 @@ public class DriverOperationsService {
     private final SubscriptionRepository subscriptionRepository;
     private final ActiveSubscriptionRepository activeSubscriptionRepository;
     private final PaymentRepository paymentRepository;
+    private final VehiclePendingUpdateRepository vehiclePendingUpdateRepository;
     private final CardRepository cardRepository;
     private final RentalSessionRepository rentalSessionRepository;
     private final DTOConverter dtoConverter;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
 
-    public DriverOperationsService(AccountRepository accountRepository, DriverRepository driverRepository, VehicleRepository vehicleRepository, SubscriptionRepository subscriptionRepository, PaymentRepository paymentRepository, CardRepository cardRepository, DTOConverter dtoConverter, AuthenticationManager authenticationManager, JwtService jwtService, ActiveSubscriptionRepository activeSubscriptionRepository, RentalSessionRepository rentalSessionRepository) {
+    public DriverOperationsService(AccountRepository accountRepository, DriverRepository driverRepository, VehicleRepository vehicleRepository, SubscriptionRepository subscriptionRepository, PaymentRepository paymentRepository, VehiclePendingUpdateRepository vehiclePendingUpdateRepository, CardRepository cardRepository, DTOConverter dtoConverter, AuthenticationManager authenticationManager, JwtService jwtService, ActiveSubscriptionRepository activeSubscriptionRepository, RentalSessionRepository rentalSessionRepository) {
         this.accountRepository = accountRepository;
         this.vehicleRepository = vehicleRepository;
         this.subscriptionRepository = subscriptionRepository;
         this.paymentRepository = paymentRepository;
+        this.vehiclePendingUpdateRepository = vehiclePendingUpdateRepository;
         this.cardRepository = cardRepository;
         this.dtoConverter = dtoConverter;
         this.driverRepository = driverRepository;
@@ -81,7 +83,7 @@ public class DriverOperationsService {
         Iterable<Vehicle> iterableVehicles = vehicleRepository.findAll();
         ArrayList<Vehicle> vehicles = new ArrayList<>();
         iterableVehicles.forEach(vehicles::add);
-        return vehicles.stream().filter(vehicle -> rentalSessionRepository.findRentalSessionByVehicleAndAndEndTime(vehicle,null).isEmpty()).map(dtoConverter::fromVehicleToDTO).toList();
+        return vehicles.stream().filter(vehicle -> vehicle.isAvailable() && rentalSessionRepository.findRentalSessionByVehicleAndEndTime(vehicle,null).isEmpty()).map(dtoConverter::fromVehicleToDTO).toList();
     }
     public String addSubscriptionToDriver(SubscriptionContractDTO subscriptionContractDTO) throws NoSuchElementException{
         var databaseAccount = accountRepository.findByUsername(subscriptionContractDTO.getDriverUsername()).orElseThrow();
@@ -90,12 +92,16 @@ public class DriverOperationsService {
         if(databaseSubscription.isEmpty()){
             return "CANNOT_FIND_SUBSCRIPTION";
         }else{
-            var card = new Card(subscriptionContractDTO.getEncryptedCardNumber());
-            cardRepository.save(card);
-            var payment = new Payment(card,Double.parseDouble(subscriptionContractDTO.getValue()));
+
+            var payment = new Payment(cardRepository.findCardByCardNumber(subscriptionContractDTO.getEncryptedCardNumber())
+                            .orElseGet(() -> {
+                                Card card = new Card(subscriptionContractDTO.getEncryptedCardNumber());
+                                cardRepository.save(card);
+                                return card;
+                            }),Double.parseDouble(subscriptionContractDTO.getValue()));
             paymentRepository.save(payment);
 
-            var instant = Instant.now();
+            var now = LocalDateTime.now();
             var subscriptionDuration = 1;
             if(databaseSubscription.get().getRentalPrice().getTimeUnit().equals("week")){
                 subscriptionDuration = 7;
@@ -106,7 +112,7 @@ public class DriverOperationsService {
                 }
             }
 
-            var activeSubscription = new ActiveSubscription(databaseSubscription.get(),Timestamp.from(instant),Timestamp.from(instant.plus(subscriptionDuration,ChronoUnit.DAYS)),payment);
+            var activeSubscription = new ActiveSubscription(databaseSubscription.get(), now, LocalDateTime.from(now.plus(subscriptionDuration,ChronoUnit.DAYS)),payment);
             activeSubscriptionRepository.save(activeSubscription);
             databaseDriver.setActiveSubscription(activeSubscription);
             return "SUCCESS";
@@ -117,48 +123,119 @@ public class DriverOperationsService {
         var databaseAccount = accountRepository.findByUsername(username).orElseThrow();
         var databaseDriver = driverRepository.findByAccount(databaseAccount).orElseThrow();
         var driverActiveSubscription = databaseDriver.getActiveSubscription();
-        return driverActiveSubscription != null ? dtoConverter.fromActiveSubscriptionToDTO(driverActiveSubscription) : null;
+        if(driverActiveSubscription != null) {
+            if(driverActiveSubscription.getEndDate().isBefore(LocalDateTime.now())){
+                databaseDriver.setActiveSubscription(null);
+                activeSubscriptionRepository.delete(driverActiveSubscription);
+            }else {
+               return dtoConverter.fromActiveSubscriptionToDTO(driverActiveSubscription);
+            }
+        }
+
+        return null;
     }
 
     public String startRentalSession(RentalSessionDTO rentalSessionDTO) throws Exception {
        var rentalSession =  dtoConverter.fromDTOtoRentalSession(rentalSessionDTO);
            if(rentalSession != null){
                rentalSessionRepository.save(rentalSession);
-               return "SUCCESS";
+               return "SUCCESS:"+rentalSession.getId().toString();
            }
            else{
                return "VEHICLE_ALREADY_IN_USE";
            }
     }
 
-    public String endRentalSession(RentalSessionDTO rentalSessionDTO){
+    public String endRentalSession(RentalSessionDTO rentalSessionDTO) throws NoSuchElementException{
         var databaseAccount = accountRepository.findByUsername(rentalSessionDTO.getDriverUsername())
                 .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_ACCOUNT")));
         var databaseDriver = driverRepository.findByAccount(databaseAccount)
                 .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_DRIVER")));
-        var vehicleRentalSession = rentalSessionRepository.findRentalSessionByDriver(databaseDriver)
+        var vehicleRentalSession = rentalSessionRepository.findRentalSessionByDriverAndEndTime(databaseDriver,null)
                 .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_RENTAL_SESSION")));
-        if(databaseDriver.getActiveSubscription() == null){
-            return "EXPIRED_SUBSCRIPTION";
+
+        vehicleRentalSession.setEndTime(LocalDateTime.parse(rentalSessionDTO.getEndTime()));
+        vehicleRentalSession.setCost(Double.parseDouble(rentalSessionDTO.getCost()));
+        var vehicle = vehicleRentalSession.getVehicle();
+        vehicle.setLocation(rentalSessionDTO.getLocation());
+
+        var possiblePendingUpdate = vehiclePendingUpdateRepository.findVehiclePendingUpdateByVin(vehicle.getVin());
+        if(possiblePendingUpdate.isPresent()){
+            var pendingVehicleChangeValue = possiblePendingUpdate.get();
+            vehicle.setVin(pendingVehicleChangeValue.getVin());
+            vehicle.setRegistrationNumber(pendingVehicleChangeValue.getRegistrationNumber());
+            vehicle.setManufacturer(pendingVehicleChangeValue.getManufacturer());
+            vehicle.setModel(pendingVehicleChangeValue.getModel());
+            vehicle.setRangeLeftInKm(pendingVehicleChangeValue.getRangeLeftInKm());
+            vehicle.setYearOfManufacture(pendingVehicleChangeValue.getYearOfManufacture());
+            vehicle.setHorsePower(pendingVehicleChangeValue.getHorsePower());
+            vehicle.setTorque(pendingVehicleChangeValue.getTorque());
+            vehicle.setMaximumAuthorisedMassInKg(pendingVehicleChangeValue.getMaximumAuthorisedMassInKg());
+            vehicle.setNumberOfSeats(pendingVehicleChangeValue.getNumberOfSeats());
+            vehicle.setRentalPrice(pendingVehicleChangeValue.getRentalPrice());
+            vehicle.setRentalCompany(pendingVehicleChangeValue.getRentalCompany());
+            vehicle.setAvailable(pendingVehicleChangeValue.isAvailable());
+            vehicleRepository.save(vehicle);
+            vehiclePendingUpdateRepository.delete(pendingVehicleChangeValue);
         }
 
-        vehicleRentalSession.setEndTime(Timestamp.valueOf(rentalSessionDTO.getEndTime()));
-        vehicleRentalSession.setCost(Double.parseDouble(rentalSessionDTO.getCost()));
+        rentalSessionRepository.save(vehicleRentalSession);
+        return "SUCCESS";
+    }
 
-        var payment = !Objects.equals(rentalSessionDTO.getEncryptedCardNumber(), "")
+    public String payForRentalSession(PaymentDTO paymentDTO) throws NoSuchElementException{
+        var vehicleRentalSession = rentalSessionRepository.findById(UUID.fromString(paymentDTO.getRentalSessionId()))
+                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_RENTAL_SESSION")));
+        var driverActiveSubscription = vehicleRentalSession.getDriver().getActiveSubscription();
+        if(Objects.equals(paymentDTO.getEncryptedCardNumber(), "")) {
+            if (driverActiveSubscription != null) {
+                if (driverActiveSubscription.getEndDate().isBefore(LocalDateTime.now())) {
+                    vehicleRentalSession.getDriver().setActiveSubscription(null);
+                    activeSubscriptionRepository.delete(driverActiveSubscription);
+                    return "EXPIRED_SUBSCRIPTION";
+                }
+            }else {
+                return "EXPIRED_SUBSCRIPTION";
+            }
+        }
+
+        var payment = !Objects.equals(paymentDTO.getEncryptedCardNumber(), "")
                 ?
-            new Payment(cardRepository.findCardByCardNumber(rentalSessionDTO.getEncryptedCardNumber())
-                    .orElseGet(() -> {
-                        Card card = new Card(rentalSessionDTO.getEncryptedCardNumber());
-                        cardRepository.save(card);
-                        return card;
-                    }),Double.parseDouble(rentalSessionDTO.getCost()))
+                new Payment(cardRepository.findCardByCardNumber(paymentDTO.getEncryptedCardNumber())
+                        .orElseGet(() -> {
+                            Card card = new Card(paymentDTO.getEncryptedCardNumber());
+                            cardRepository.save(card);
+                            return card;
+                        }),Double.parseDouble(paymentDTO.getCost()))
                 :
-                new Payment(databaseDriver.getActiveSubscription());
+                new Payment(vehicleRentalSession.getDriver().getActiveSubscription());
 
         paymentRepository.save(payment);
         vehicleRentalSession.setPayment(payment);
+        rentalSessionRepository.save(vehicleRentalSession);
+        return "SUCCESS";
 
+    }
+
+    public String updateRentalSession(RentalSessionDTO rentalSessionDTO){
+        var databaseVehicle = vehicleRepository.findVehicleByVin(rentalSessionDTO.getVehicleVIN())
+                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_VEHICLE")));
+        var vehicleRentalSession = rentalSessionRepository.findRentalSessionByVehicle(databaseVehicle)
+                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_RENTAL_SESSION")));
+        databaseVehicle.setLocation(rentalSessionDTO.getLocation());
+        vehicleRentalSession.setCost(Double.parseDouble(rentalSessionDTO.getCost()));
         return "SUCCESS";
     }
+
+    public CurrentRentalSessionDTO getCurrentRentalSession(String username){
+        var databaseAccount = accountRepository.findByUsername(username)
+                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_ACCOUNT")));
+        var databaseDriver = driverRepository.findByAccount(databaseAccount)
+                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_DRIVER")));
+        var vehicleRentalSession = rentalSessionRepository
+                .findRentalSessionByDriverAndPayment(databaseDriver,null)
+                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_RENTAL_SESSION")));
+        return dtoConverter.fromRentalSessionToCurrentRentalSessionDTO(vehicleRentalSession);
+    }
+
 }

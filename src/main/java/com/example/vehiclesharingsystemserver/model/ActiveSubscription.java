@@ -2,7 +2,7 @@ package com.example.vehiclesharingsystemserver.model;
 
 import jakarta.persistence.*;
 
-import java.sql.Timestamp;
+import java.time.LocalDateTime;
 import java.util.UUID;
 
 @Entity
@@ -15,15 +15,15 @@ public class ActiveSubscription{
     @ManyToOne
     private Subscription subscription;
     @Column(nullable = false)
-    private Timestamp startDate;
+    private LocalDateTime startDate;
     @Column(nullable = false)
-    private Timestamp endDate;
+    private LocalDateTime endDate;
     @OneToOne
     @JoinColumn(name = "payment_id", referencedColumnName = "id")
     private Payment payment;
 
 
-    public ActiveSubscription(Subscription subscription, Timestamp startDate, Timestamp endDate,Payment payment) {
+    public ActiveSubscription(Subscription subscription, LocalDateTime startDate, LocalDateTime endDate,Payment payment) {
         this.subscription = subscription;
         this.startDate = startDate;
         this.endDate = endDate;
@@ -42,19 +42,19 @@ public class ActiveSubscription{
         this.subscription = subscription;
     }
 
-    public Timestamp getStartDate() {
+    public LocalDateTime getStartDate() {
         return startDate;
     }
 
-    public void setStartDate(Timestamp startDate) {
+    public void setStartDate(LocalDateTime startDate) {
         this.startDate = startDate;
     }
 
-    public Timestamp getEndDate() {
+    public LocalDateTime getEndDate() {
         return endDate;
     }
 
-    public void setEndDate(Timestamp endDate) {
+    public void setEndDate(LocalDateTime endDate) {
         this.endDate = endDate;
     }
 

@@ -1,5 +1,7 @@
 package com.example.vehiclesharingsystemserver.model.DTO;
 
+import org.json.simple.JSONObject;
+
 public class VehicleDTO {
     private final String vin;
     private final String registrationNumber;
@@ -85,4 +87,5 @@ public class VehicleDTO {
     public boolean isAvailable() {
         return available;
     }
+
 }
