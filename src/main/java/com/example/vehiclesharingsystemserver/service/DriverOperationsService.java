@@ -7,7 +7,15 @@ import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Service;
 
-import java.time.Instant;
+import javax.imageio.ImageIO;
+import javax.sql.rowset.serial.SerialBlob;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.io.InputStream;
+import java.io.ObjectInputStream;
+import java.sql.Blob;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
@@ -22,18 +30,22 @@ public class DriverOperationsService {
     private final ActiveSubscriptionRepository activeSubscriptionRepository;
     private final PaymentRepository paymentRepository;
     private final VehiclePendingUpdateRepository vehiclePendingUpdateRepository;
+    private final IdentityValidationDocumentRepository identityValidationDocumentRepository;
+    private final DocumentPhotoRepository documentPhotoRepository;
     private final CardRepository cardRepository;
     private final RentalSessionRepository rentalSessionRepository;
     private final DTOConverter dtoConverter;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
 
-    public DriverOperationsService(AccountRepository accountRepository, DriverRepository driverRepository, VehicleRepository vehicleRepository, SubscriptionRepository subscriptionRepository, PaymentRepository paymentRepository, VehiclePendingUpdateRepository vehiclePendingUpdateRepository, CardRepository cardRepository, DTOConverter dtoConverter, AuthenticationManager authenticationManager, JwtService jwtService, ActiveSubscriptionRepository activeSubscriptionRepository, RentalSessionRepository rentalSessionRepository) {
+    public DriverOperationsService(AccountRepository accountRepository, DriverRepository driverRepository, VehicleRepository vehicleRepository, SubscriptionRepository subscriptionRepository, PaymentRepository paymentRepository, VehiclePendingUpdateRepository vehiclePendingUpdateRepository, IdentityValidationDocumentRepository identityValidationDocumentRepository, DocumentPhotoRepository documentPhotoRepository, CardRepository cardRepository, DTOConverter dtoConverter, AuthenticationManager authenticationManager, JwtService jwtService, ActiveSubscriptionRepository activeSubscriptionRepository, RentalSessionRepository rentalSessionRepository) {
         this.accountRepository = accountRepository;
         this.vehicleRepository = vehicleRepository;
         this.subscriptionRepository = subscriptionRepository;
         this.paymentRepository = paymentRepository;
         this.vehiclePendingUpdateRepository = vehiclePendingUpdateRepository;
+        this.identityValidationDocumentRepository = identityValidationDocumentRepository;
+        this.documentPhotoRepository = documentPhotoRepository;
         this.cardRepository = cardRepository;
         this.dtoConverter = dtoConverter;
         this.driverRepository = driverRepository;
@@ -238,4 +250,60 @@ public class DriverOperationsService {
         return dtoConverter.fromRentalSessionToCurrentRentalSessionDTO(vehicleRentalSession);
     }
 
+    public String setDrivingLicensePhoto(IdentityValidationDocumentDTO identityValidationDocumentDTO) throws SQLException  {
+        var databaseAccount = accountRepository.findByUsername(identityValidationDocumentDTO.getUsername())
+                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_ACCOUNT")));
+        var databaseDriver = driverRepository.findByAccount(databaseAccount)
+                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_DRIVER")));
+        var decoder = Base64.getMimeDecoder();
+        var photoFrontIVD = identityValidationDocumentDTO.getPhotoFront();
+        var photoBackIVD = identityValidationDocumentDTO.getPhotoBack();
+        var decodedByteArrayFront = decoder.decode(photoFrontIVD);
+        var decodedByteArrayBack = decoder.decode(photoBackIVD);
+        var inputStreamFront = new ByteArrayInputStream(decodedByteArrayFront);
+        var inputStreamBack = new ByteArrayInputStream(decodedByteArrayBack);
+        Blob photoFront = new SerialBlob(inputStreamFront.readAllBytes());
+        Blob photoBack = new SerialBlob(inputStreamBack.readAllBytes());
+        var identityValidationDocument = new IdentityValidationDocument("driving_license","PENDING_VALIDATION",databaseDriver);
+        var documentPhotoFront = new DocumentPhoto(photoFront,identityValidationDocument);
+        var documentPhotoBack = new DocumentPhoto(photoBack,identityValidationDocument);
+        identityValidationDocumentRepository.save(identityValidationDocument);
+        documentPhotoRepository.save(documentPhotoFront);
+        documentPhotoRepository.save(documentPhotoBack);
+        return "SUCCESS";
+    }
+
+    public String hasSubmittedDocuments(String username) {
+        var databaseAccount = accountRepository.findByUsername(username)
+                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_ACCOUNT")));
+        var databaseDriver = driverRepository.findByAccount(databaseAccount)
+                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_DRIVER")));
+        if (identityValidationDocumentRepository.findByDriver(databaseDriver).isPresent()) {
+            return "SUBMITTED";
+        } else {
+            return "NOT_SUBMITTED";
+        }
+    }
+
+    public String isValidatedAsLegalDriver(String username){
+        var databaseAccount = accountRepository.findByUsername(username)
+                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_ACCOUNT")));
+        var databaseDriver = driverRepository.findByAccount(databaseAccount)
+                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_DRIVER")));
+        var databaseIdentityValidationDocument = identityValidationDocumentRepository.findByDriver(databaseDriver)
+                .orElseThrow(()-> new NoSuchElementException(("NO_SUCH_DOCUMENT")));
+        return databaseIdentityValidationDocument.getStatus();
+    }
+
+    public String setStatusOfDriverDocument(DocumentStatusDTO documentStatusDTO){
+        var databaseAccount = accountRepository.findByUsername(documentStatusDTO.getUsername())
+                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_ACCOUNT")));
+        var databaseDriver = driverRepository.findByAccount(databaseAccount)
+                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_DRIVER")));
+        var databaseIdentityValidationDocument = identityValidationDocumentRepository.findByDriver(databaseDriver)
+                .orElseThrow(()-> new NoSuchElementException(("NO_SUCH_DOCUMENT")));
+        databaseIdentityValidationDocument.setStatus(documentStatusDTO.getStatus());
+        identityValidationDocumentRepository.save(databaseIdentityValidationDocument);
+        return "SUCCESS";
+    }
 }

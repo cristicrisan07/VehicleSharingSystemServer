@@ -1,13 +1,12 @@
 package com.example.vehiclesharingsystemserver.controller;
 
 import com.example.vehiclesharingsystemserver.model.DTO.*;
-import com.example.vehiclesharingsystemserver.model.Subscription;
 import com.example.vehiclesharingsystemserver.service.DriverOperationsService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import java.util.Currency;
+import java.sql.Blob;
 import java.util.List;
 import java.util.NoSuchElementException;
 
@@ -114,5 +113,37 @@ public class DriverController {
                     .body(null);
         }
     }
+
+    @PostMapping("/driver/setDriverLicense")
+    public ResponseEntity<String> setDriverLicense(@RequestBody IdentityValidationDocumentDTO identityValidationDocumentDTO) {
+        try{
+            String status = driverOperationsService.setDrivingLicensePhoto(identityValidationDocumentDTO);
+            return ResponseEntity.ok(status);
+        }catch (Exception e){
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(e.getMessage());
+        }
+    }
+
+    @PostMapping("/driver/hasSubmittedDocuments")
+    public ResponseEntity<String> hasSubmittedDocuments(@RequestBody String username){
+        return ResponseEntity.ok(driverOperationsService.hasSubmittedDocuments(username));
+    }
+
+    @PostMapping("/driver/isValidatedAsLegalDriver")
+    public ResponseEntity<String> isValidated(@RequestBody String username){
+        return ResponseEntity.ok(driverOperationsService.isValidatedAsLegalDriver(username));
+    }
+
+    @PostMapping("/driver/setStatusOfDriverDocument")
+    public ResponseEntity<String> setStatusOfDriverDocument(DocumentStatusDTO documentStatusDTO){
+        try{
+            String status = driverOperationsService.setStatusOfDriverDocument(documentStatusDTO);
+            return ResponseEntity.ok(status);
+        }catch (Exception e){
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(e.getMessage());
+        }
+    }
+
+
 
 }

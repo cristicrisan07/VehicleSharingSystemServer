@@ -24,12 +24,45 @@ public class IdentityValidationDocument {
     private String status;
 
 
-    public IdentityValidationDocument(String type, String status) {
+    public IdentityValidationDocument(String type, String status,Driver driver) {
         this.type = type;
         this.status = status;
+        this.driver = driver;
     }
 
     public IdentityValidationDocument(){
 
+    }
+
+    public Set<DocumentPhoto> getPhotos() {
+        return photos;
+    }
+
+    public void setPhotos(Set<DocumentPhoto> photos) {
+        this.photos = photos;
+    }
+
+    public Driver getDriver() {
+        return driver;
+    }
+
+    public void setDriver(Driver driver) {
+        this.driver = driver;
+    }
+
+    public String getType() {
+        return type;
+    }
+
+    public void setType(String type) {
+        this.type = type;
+    }
+
+    public String getStatus() {
+        return status;
+    }
+
+    public void setStatus(String status) {
+        this.status = status;
     }
 }
