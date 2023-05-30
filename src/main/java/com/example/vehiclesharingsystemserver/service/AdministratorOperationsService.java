@@ -1,10 +1,7 @@
 package com.example.vehiclesharingsystemserver.service;
 
-import com.example.vehiclesharingsystemserver.model.Account;
-import com.example.vehiclesharingsystemserver.model.Company;
+import com.example.vehiclesharingsystemserver.model.*;
 import com.example.vehiclesharingsystemserver.model.DTO.*;
-import com.example.vehiclesharingsystemserver.model.RentalCompanyManager;
-import com.example.vehiclesharingsystemserver.model.Subscription;
 import com.example.vehiclesharingsystemserver.repository.*;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
@@ -20,17 +17,19 @@ public class AdministratorOperationsService {
     private final RentalCompanyManagerRepository rentalCompanyManagerRepository;
     private final CompanyRepository companyRepository;
     private final SubscriptionRepository subscriptionRepository;
+    private final IdentityValidationDocumentRepository identityValidationDocumentRepository;
     private final DTOConverter dtoConverter;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
 
-    public AdministratorOperationsService(AccountRepository accountRepository, AdministratorRepository administratorRepository, RentalCompanyManagerRepository rentalCompanyManagerRepository, CompanyRepository companyRepository, SubscriptionRepository subscriptionRepository, DTOConverter dtoConverter, AuthenticationManager authenticationManager, JwtService jwtService, PasswordEncoder passwordEncoder) {
+    public AdministratorOperationsService(AccountRepository accountRepository, AdministratorRepository administratorRepository, RentalCompanyManagerRepository rentalCompanyManagerRepository, CompanyRepository companyRepository, SubscriptionRepository subscriptionRepository, IdentityValidationDocumentRepository identityValidationDocumentRepository, DTOConverter dtoConverter, AuthenticationManager authenticationManager, JwtService jwtService, PasswordEncoder passwordEncoder) {
         this.accountRepository = accountRepository;
         this.administratorRepository = administratorRepository;
         this.rentalCompanyManagerRepository = rentalCompanyManagerRepository;
         this.companyRepository = companyRepository;
         this.subscriptionRepository = subscriptionRepository;
+        this.identityValidationDocumentRepository = identityValidationDocumentRepository;
         this.dtoConverter = dtoConverter;
         this.authenticationManager = authenticationManager;
         this.jwtService = jwtService;
@@ -265,6 +264,14 @@ public class AdministratorOperationsService {
             companyRepository.delete(databaseCompany.get());
             return "SUCCESS";
         }
+    }
+
+    public List<IdentityValidationDocumentDTO> getPendingValidations(){
+        var iterableIdentities = identityValidationDocumentRepository.findAllByStatus("PENDING_VALIDATION");
+        ArrayList<IdentityValidationDocument> identities = new ArrayList<>();
+        iterableIdentities.forEach(identities::add);
+        return identities.stream().map(dtoConverter::fromIdentityValidationDocumentToDTO).toList();
+
     }
 
 }

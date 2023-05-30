@@ -9,4 +9,5 @@ import java.util.UUID;
 
 public interface IdentityValidationDocumentRepository extends CrudRepository<IdentityValidationDocument, UUID> {
         Optional<IdentityValidationDocument> findByDriver(Driver driver);
+        Iterable<IdentityValidationDocument> findAllByStatus(String status);
 }

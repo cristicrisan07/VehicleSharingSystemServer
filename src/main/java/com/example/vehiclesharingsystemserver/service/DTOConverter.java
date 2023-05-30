@@ -6,10 +6,13 @@ import com.example.vehiclesharingsystemserver.repository.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
+import javax.sql.rowset.serial.SerialBlob;
+import java.io.ByteArrayInputStream;
+import java.io.IOException;
+import java.sql.Blob;
+import java.sql.SQLException;
 import java.time.LocalDateTime;
-import java.util.Currency;
-import java.util.NoSuchElementException;
-import java.util.Optional;
+import java.util.*;
 
 @Service
 public class DTOConverter {
@@ -185,6 +188,24 @@ public class DTOConverter {
                 rentalPrice,
                 value,
                 vehicleDTO.isAvailable())).orElse(null);
+    }
+
+    public IdentityValidationDocumentDTO fromIdentityValidationDocumentToDTO(IdentityValidationDocument identityValidationDocument){
+        var encoder = Base64.getEncoder();
+        var photoFrontIVD = identityValidationDocument.getPhotos().stream().toList().get(0);
+        var photoBackIVD = identityValidationDocument.getPhotos().stream().toList().get(1);
+        try {
+            var encodedByteArrayFront = encoder.encodeToString(photoFrontIVD.getPhoto().getBinaryStream().readAllBytes());
+            var encodedByteArrayBack = encoder.encodeToString(photoBackIVD.getPhoto().getBinaryStream().readAllBytes());
+            return new IdentityValidationDocumentDTO(
+                    identityValidationDocument.getDriver().getAccount().getUsername(),
+                    encodedByteArrayFront,
+                    encodedByteArrayBack);
+        }
+        catch (Exception e){
+            e.printStackTrace();
+        }
+        return null;
     }
 }
 

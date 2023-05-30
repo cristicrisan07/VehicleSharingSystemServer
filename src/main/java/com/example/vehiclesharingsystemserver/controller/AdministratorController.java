@@ -60,6 +60,12 @@ public class AdministratorController {
         List<SubscriptionDTO> subscriptions = administratorOperationsService.getAvailableSubscriptions();
         return ResponseEntity.status(HttpStatus.OK).body(subscriptions);
     }
+
+    @GetMapping("/administrator/getPendingValidations")
+    public ResponseEntity<List<IdentityValidationDocumentDTO>> getPendingValidation(){
+        List<IdentityValidationDocumentDTO> pendingValidations = administratorOperationsService.getPendingValidations();
+        return ResponseEntity.status(HttpStatus.OK).body(pendingValidations);
+    }
     @PostMapping("/administrator/updateSubscription")
     public ResponseEntity<String> updateSubscription(@RequestBody SubscriptionDTO subscriptionDTO){
         return ResponseEntity.ok(administratorOperationsService.updateSubscription(subscriptionDTO));
@@ -84,6 +90,8 @@ public class AdministratorController {
     public ResponseEntity<String> deleteSubscription(@PathVariable String id){
         return ResponseEntity.ok(administratorOperationsService.deleteSubscription(id));
     }
+
+
 
 
 
