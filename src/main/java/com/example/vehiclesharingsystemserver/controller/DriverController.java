@@ -134,15 +134,7 @@ public class DriverController {
         return ResponseEntity.ok(driverOperationsService.isValidatedAsLegalDriver(username));
     }
 
-    @PostMapping("/driver/setStatusOfDriverDocument")
-    public ResponseEntity<String> setStatusOfDriverDocument(DocumentStatusDTO documentStatusDTO){
-        try{
-            String status = driverOperationsService.setStatusOfDriverDocument(documentStatusDTO);
-            return ResponseEntity.ok(status);
-        }catch (Exception e){
-            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(e.getMessage());
-        }
-    }
+
 
 
 

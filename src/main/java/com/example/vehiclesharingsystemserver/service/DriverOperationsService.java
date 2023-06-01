@@ -264,7 +264,14 @@ public class DriverOperationsService {
         var inputStreamBack = new ByteArrayInputStream(decodedByteArrayBack);
         Blob photoFront = new SerialBlob(inputStreamFront.readAllBytes());
         Blob photoBack = new SerialBlob(inputStreamBack.readAllBytes());
-        var identityValidationDocument = new IdentityValidationDocument("driving_license","PENDING_VALIDATION",databaseDriver);
+
+        var identityValidationDocument = identityValidationDocumentRepository.findByDriver(databaseDriver)
+                .orElse(new IdentityValidationDocument("driving_license","PENDING_VALIDATION",databaseDriver));
+        if(identityValidationDocument.getStatus().equals("INVALID")){
+            var iterableDocumentPhotos = documentPhotoRepository.findByIdentityValidationDocument(identityValidationDocument);
+            documentPhotoRepository.deleteAll(iterableDocumentPhotos);
+            identityValidationDocument.setStatus("PENDING_VALIDATION");
+        }
         var documentPhotoFront = new DocumentPhoto(photoFront,identityValidationDocument);
         var documentPhotoBack = new DocumentPhoto(photoBack,identityValidationDocument);
         identityValidationDocumentRepository.save(identityValidationDocument);
@@ -293,17 +300,5 @@ public class DriverOperationsService {
         var databaseIdentityValidationDocument = identityValidationDocumentRepository.findByDriver(databaseDriver)
                 .orElseThrow(()-> new NoSuchElementException(("NO_SUCH_DOCUMENT")));
         return databaseIdentityValidationDocument.getStatus();
-    }
-
-    public String setStatusOfDriverDocument(DocumentStatusDTO documentStatusDTO){
-        var databaseAccount = accountRepository.findByUsername(documentStatusDTO.getUsername())
-                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_ACCOUNT")));
-        var databaseDriver = driverRepository.findByAccount(databaseAccount)
-                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_DRIVER")));
-        var databaseIdentityValidationDocument = identityValidationDocumentRepository.findByDriver(databaseDriver)
-                .orElseThrow(()-> new NoSuchElementException(("NO_SUCH_DOCUMENT")));
-        databaseIdentityValidationDocument.setStatus(documentStatusDTO.getStatus());
-        identityValidationDocumentRepository.save(databaseIdentityValidationDocument);
-        return "SUCCESS";
     }
 }

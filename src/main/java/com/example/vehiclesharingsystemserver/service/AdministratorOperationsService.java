@@ -17,18 +17,20 @@ public class AdministratorOperationsService {
     private final RentalCompanyManagerRepository rentalCompanyManagerRepository;
     private final CompanyRepository companyRepository;
     private final SubscriptionRepository subscriptionRepository;
+    private final DriverRepository driverRepository;
     private final IdentityValidationDocumentRepository identityValidationDocumentRepository;
     private final DTOConverter dtoConverter;
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final PasswordEncoder passwordEncoder;
 
-    public AdministratorOperationsService(AccountRepository accountRepository, AdministratorRepository administratorRepository, RentalCompanyManagerRepository rentalCompanyManagerRepository, CompanyRepository companyRepository, SubscriptionRepository subscriptionRepository, IdentityValidationDocumentRepository identityValidationDocumentRepository, DTOConverter dtoConverter, AuthenticationManager authenticationManager, JwtService jwtService, PasswordEncoder passwordEncoder) {
+    public AdministratorOperationsService(AccountRepository accountRepository, AdministratorRepository administratorRepository, RentalCompanyManagerRepository rentalCompanyManagerRepository, CompanyRepository companyRepository, SubscriptionRepository subscriptionRepository, DriverRepository driverRepository, IdentityValidationDocumentRepository identityValidationDocumentRepository, DTOConverter dtoConverter, AuthenticationManager authenticationManager, JwtService jwtService, PasswordEncoder passwordEncoder) {
         this.accountRepository = accountRepository;
         this.administratorRepository = administratorRepository;
         this.rentalCompanyManagerRepository = rentalCompanyManagerRepository;
         this.companyRepository = companyRepository;
         this.subscriptionRepository = subscriptionRepository;
+        this.driverRepository = driverRepository;
         this.identityValidationDocumentRepository = identityValidationDocumentRepository;
         this.dtoConverter = dtoConverter;
         this.authenticationManager = authenticationManager;
@@ -272,6 +274,17 @@ public class AdministratorOperationsService {
         iterableIdentities.forEach(identities::add);
         return identities.stream().map(dtoConverter::fromIdentityValidationDocumentToDTO).toList();
 
+    }
+    public String setStatusOfDriverDocument(DocumentStatusDTO documentStatusDTO){
+        var databaseAccount = accountRepository.findByUsername(documentStatusDTO.getDriverUsername())
+                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_ACCOUNT")));
+        var databaseDriver = driverRepository.findByAccount(databaseAccount)
+                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_DRIVER")));
+        var databaseIdentityValidationDocument = identityValidationDocumentRepository.findByDriver(databaseDriver)
+                .orElseThrow(()-> new NoSuchElementException(("NO_SUCH_DOCUMENT")));
+        databaseIdentityValidationDocument.setStatus(documentStatusDTO.getValidationStatus());
+        identityValidationDocumentRepository.save(databaseIdentityValidationDocument);
+        return "SUCCESS";
     }
 
 }

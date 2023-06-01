@@ -1,18 +1,18 @@
 package com.example.vehiclesharingsystemserver.model.DTO;
 
 public class DocumentStatusDTO {
-    private final String username;
-    private final String status;
-    public DocumentStatusDTO(String username, String status) {
-        this.username = username;
-        this.status = status;
+    private final String driverUsername;
+    private final String validationStatus;
+    public DocumentStatusDTO(String driverUsername, String validationStatus) {
+        this.driverUsername = driverUsername;
+        this.validationStatus = validationStatus;
     }
 
-    public String getUsername() {
-        return username;
+    public String getDriverUsername() {
+        return driverUsername;
     }
 
-    public String getStatus() {
-        return status;
+    public String getValidationStatus() {
+        return validationStatus;
     }
 }

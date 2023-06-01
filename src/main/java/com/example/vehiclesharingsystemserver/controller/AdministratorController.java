@@ -90,6 +90,15 @@ public class AdministratorController {
     public ResponseEntity<String> deleteSubscription(@PathVariable String id){
         return ResponseEntity.ok(administratorOperationsService.deleteSubscription(id));
     }
+    @PostMapping("/administrator/setStatusOfDriverDocument")
+    public ResponseEntity<String> setStatusOfDriverDocument(@RequestBody DocumentStatusDTO documentStatusDTO){
+        try{
+            String status = administratorOperationsService.setStatusOfDriverDocument(documentStatusDTO);
+            return ResponseEntity.ok(status);
+        }catch (Exception e){
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(e.getMessage());
+        }
+    }
 
 
 
