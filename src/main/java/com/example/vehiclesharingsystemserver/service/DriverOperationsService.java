@@ -56,21 +56,21 @@ public class DriverOperationsService {
     }
 
     public String register(UserDTO userDTO){
-
-         String status = checkIfUsernameExists(userDTO.getAccount().getUsername());
-         if(Objects.equals(status, "DOESN'T EXIST")) {
-             if (accountRepository.findByEmailAddress(userDTO.getAccount().getEmailAddress()).isPresent()) {
-                 return "EMAIL_TAKEN";
-             }
-             var driver = dtoConverter.fromUserDTOtoDriver(userDTO);
-             accountRepository.save(driver.getAccount());
-             driverRepository.save(driver);
-             return jwtService.generateToken(new HashMap<>(), driver.getAccount());
-         }
-         else {
-             return "ERROR: " + status;
-         }
-
+        String result = checkIfUsernameExists(userDTO.getAccount().getUsername());
+        if(result.equals("DOESN'T EXIST")) {
+            if (accountRepository.findByEmailAddress(userDTO.getAccount().getEmailAddress()).isPresent()) {
+                return "ERROR: EMAIL_TAKEN";
+            }
+            if (accountRepository.findAccountByPhoneNumber(userDTO.getAccount().getPhoneNumber()).isPresent()) {
+                return "ERROR: PHONE_NUMBER_TAKEN";
+            }
+            var driver = dtoConverter.fromUserDTOtoDriver(userDTO);
+            accountRepository.save(driver.getAccount());
+            driverRepository.save(driver);
+            return jwtService.generateToken(new HashMap<>(), driver.getAccount());
+        }else{
+            return "ERROR: USERNAME_TAKEN";
+        }
     }
 
     public String checkIfUsernameExists(String username) {
@@ -97,12 +97,12 @@ public class DriverOperationsService {
         iterableVehicles.forEach(vehicles::add);
         return vehicles.stream().filter(vehicle -> vehicle.isAvailable() && rentalSessionRepository.findRentalSessionByVehicleAndEndTime(vehicle,null).isEmpty()).map(dtoConverter::fromVehicleToDTO).toList();
     }
-    public String addSubscriptionToDriver(SubscriptionContractDTO subscriptionContractDTO) throws NoSuchElementException{
-        var databaseAccount = accountRepository.findByUsername(subscriptionContractDTO.getDriverUsername()).orElseThrow();
-        var databaseDriver = driverRepository.findByAccount(databaseAccount).orElseThrow();
+    public ActiveSubscriptionDTO addSubscriptionToDriver(SubscriptionContractDTO subscriptionContractDTO) throws NoSuchElementException{
+        var databaseAccount = accountRepository.findByUsername(subscriptionContractDTO.getDriverUsername()).orElseThrow(()->new NoSuchElementException("DRIVER_NOT_FOUND"));
+        var databaseDriver = driverRepository.findByAccount(databaseAccount).orElseThrow(()->new NoSuchElementException("DRIVER_NOT_FOUND"));
         var databaseSubscription = subscriptionRepository.findById(UUID.fromString(subscriptionContractDTO.getSubscriptionId()));
         if(databaseSubscription.isEmpty()){
-            return "CANNOT_FIND_SUBSCRIPTION";
+            throw new NoSuchElementException("CANNOT_FIND_REQUESTED_SUBSCRIPTION");
         }else{
 
             var payment = new Payment(cardRepository.findCardByCardNumber(subscriptionContractDTO.getEncryptedCardNumber())
@@ -124,10 +124,15 @@ public class DriverOperationsService {
                 }
             }
 
-            var activeSubscription = new ActiveSubscription(databaseSubscription.get(), now, LocalDateTime.from(now.plus(subscriptionDuration,ChronoUnit.DAYS)),payment);
+            var activeSubscription = new ActiveSubscription(
+                    databaseSubscription.get(),
+                    now,
+                    LocalDateTime.from(now.plus(subscriptionDuration,ChronoUnit.DAYS)),
+                    payment);
             activeSubscriptionRepository.save(activeSubscription);
             databaseDriver.setActiveSubscription(activeSubscription);
-            return "SUCCESS";
+            driverRepository.save(databaseDriver);
+            return dtoConverter.fromActiveSubscriptionToDTO(activeSubscription);
         }
     }
 
@@ -135,16 +140,26 @@ public class DriverOperationsService {
         var databaseAccount = accountRepository.findByUsername(username).orElseThrow();
         var databaseDriver = driverRepository.findByAccount(databaseAccount).orElseThrow();
         var driverActiveSubscription = databaseDriver.getActiveSubscription();
+        String message = "NO_SUBSCRIPTION";
         if(driverActiveSubscription != null) {
             if(driverActiveSubscription.getEndDate().isBefore(LocalDateTime.now())){
                 databaseDriver.setActiveSubscription(null);
-                activeSubscriptionRepository.delete(driverActiveSubscription);
+                //activeSubscriptionRepository.delete(driverActiveSubscription);
+                message = "SUBSCRIPTION_EXPIRED";
             }else {
                return dtoConverter.fromActiveSubscriptionToDTO(driverActiveSubscription);
             }
         }
 
-        return null;
+        return new ActiveSubscriptionDTO(
+                message,
+                new SubscriptionDTO(
+                        "",
+                        "",
+                        0,
+                        new RentalPriceDTO("","","")),
+                "",
+                "");
     }
 
     public String startRentalSession(RentalSessionDTO rentalSessionDTO) throws Exception {
@@ -258,12 +273,16 @@ public class DriverOperationsService {
         var decoder = Base64.getMimeDecoder();
         var photoFrontIVD = identityValidationDocumentDTO.getPhotoFront();
         var photoBackIVD = identityValidationDocumentDTO.getPhotoBack();
+        var photoIDIVD = identityValidationDocumentDTO.getPhotoIDCard();
         var decodedByteArrayFront = decoder.decode(photoFrontIVD);
         var decodedByteArrayBack = decoder.decode(photoBackIVD);
+        var decodedByteArrayID = decoder.decode(photoIDIVD);
         var inputStreamFront = new ByteArrayInputStream(decodedByteArrayFront);
         var inputStreamBack = new ByteArrayInputStream(decodedByteArrayBack);
+        var inputStreamID = new ByteArrayInputStream(decodedByteArrayID);
         Blob photoFront = new SerialBlob(inputStreamFront.readAllBytes());
         Blob photoBack = new SerialBlob(inputStreamBack.readAllBytes());
+        Blob photoID = new SerialBlob(inputStreamID.readAllBytes());
 
         var identityValidationDocument = identityValidationDocumentRepository.findByDriver(databaseDriver)
                 .orElse(new IdentityValidationDocument("driving_license","PENDING_VALIDATION",databaseDriver));
@@ -274,9 +293,11 @@ public class DriverOperationsService {
         }
         var documentPhotoFront = new DocumentPhoto(photoFront,identityValidationDocument);
         var documentPhotoBack = new DocumentPhoto(photoBack,identityValidationDocument);
+        var documentPhotoID = new DocumentPhoto(photoID,identityValidationDocument);
         identityValidationDocumentRepository.save(identityValidationDocument);
         documentPhotoRepository.save(documentPhotoFront);
         documentPhotoRepository.save(documentPhotoBack);
+        documentPhotoRepository.save(documentPhotoID);
         return "SUCCESS";
     }
 

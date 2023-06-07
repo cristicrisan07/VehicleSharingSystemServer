@@ -21,7 +21,11 @@ public class DriverController {
 
     @PostMapping("/driver/register")
     public ResponseEntity<String> register(@RequestBody UserDTO userDTO){
-        return ResponseEntity.ok(driverOperationsService.register(userDTO));
+        String result = driverOperationsService.register(userDTO);
+        return result.contains("ERROR") ?
+                ResponseEntity.ok(result)
+                :
+                ResponseEntity.status(HttpStatus.FORBIDDEN).body(result);
     }
     @PostMapping("/driver/authenticate")
     public ResponseEntity<String> authenticate(@RequestBody AccountDTO accountDTO){
@@ -43,12 +47,22 @@ public class DriverController {
         return ResponseEntity.ok(driverOperationsService.getAllAvailableVehicles());
     }
     @PostMapping("/driver/addSubscriptionToDriver")
-    public ResponseEntity<String> addSubscriptionToDriver(@RequestBody SubscriptionContractDTO subscriptionContractDTO){
+    public ResponseEntity<ActiveSubscriptionDTO> addSubscriptionToDriver(@RequestBody SubscriptionContractDTO subscriptionContractDTO){
         try{
-            String result = driverOperationsService.addSubscriptionToDriver(subscriptionContractDTO);
+            ActiveSubscriptionDTO result = driverOperationsService.addSubscriptionToDriver(subscriptionContractDTO);
             return ResponseEntity.ok(result);
         }catch(NoSuchElementException e) {
-            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body("DRIVER_NOT_FOUND");
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY)
+                    .body(new ActiveSubscriptionDTO(
+                            e.getMessage(),
+                            new SubscriptionDTO(
+                                    "",
+                                    "",
+                                    0,
+                                    new RentalPriceDTO("","","")),
+                            "",
+                            "")
+                    );
         }
     }
 

@@ -6,11 +6,6 @@ import com.example.vehiclesharingsystemserver.repository.*;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
-import javax.sql.rowset.serial.SerialBlob;
-import java.io.ByteArrayInputStream;
-import java.io.IOException;
-import java.sql.Blob;
-import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.util.*;
 
@@ -194,13 +189,15 @@ public class DTOConverter {
         var encoder = Base64.getEncoder();
         var photoFrontIVD = identityValidationDocument.getPhotos().stream().toList().get(0);
         var photoBackIVD = identityValidationDocument.getPhotos().stream().toList().get(1);
+        var photoID = identityValidationDocument.getPhotos().stream().toList().get(2);
         try {
             var encodedByteArrayFront = encoder.encodeToString(photoFrontIVD.getPhoto().getBinaryStream().readAllBytes());
             var encodedByteArrayBack = encoder.encodeToString(photoBackIVD.getPhoto().getBinaryStream().readAllBytes());
+            var encodedPhotoID = encoder.encodeToString(photoID.getPhoto().getBinaryStream().readAllBytes());
             return new IdentityValidationDocumentDTO(
                     identityValidationDocument.getDriver().getAccount().getUsername(),
                     encodedByteArrayFront,
-                    encodedByteArrayBack);
+                    encodedByteArrayBack, encodedPhotoID);
         }
         catch (Exception e){
             e.printStackTrace();
