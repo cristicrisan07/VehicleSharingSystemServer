@@ -50,4 +50,8 @@ public class ManagerController {
     public ResponseEntity<String> deleteVehicle(@PathVariable String vin){
         return ResponseEntity.ok(rentalCompanyManagerOperationsService.deleteVehicle(vin));
     }
+    @GetMapping("/manager/getVehicleLocation/{vin}")
+    public ResponseEntity<String> getVehicleLocation(@PathVariable String vin){
+        return ResponseEntity.ok(rentalCompanyManagerOperationsService.getVehicleLocation(vin));
+    }
 }

@@ -1,8 +1,10 @@
 package com.example.vehiclesharingsystemserver.model;
 
 import jakarta.persistence.*;
+import org.springframework.cglib.core.Local;
 
 import java.sql.Blob;
+import java.time.LocalDateTime;
 import java.util.Set;
 import java.util.UUID;
 
@@ -35,6 +37,7 @@ public class Vehicle {
     private int numberOfSeats;
     @Column(nullable = false)
     private String location;
+    private LocalDateTime lastLocationReading;
     @ManyToOne
     private RentalPrice rentalPrice;
     @Lob
@@ -195,6 +198,22 @@ public class Vehicle {
 
     public void setAvailable(boolean available) {
         this.available = available;
+    }
+
+    public UUID getId() {
+        return id;
+    }
+
+    public void setId(UUID id) {
+        this.id = id;
+    }
+
+    public LocalDateTime getLastLocationReading() {
+        return lastLocationReading;
+    }
+
+    public void setLastLocationReading(LocalDateTime lastLocationReading) {
+        this.lastLocationReading = lastLocationReading;
     }
 }
 

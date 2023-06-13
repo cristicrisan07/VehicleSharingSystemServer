@@ -3,22 +3,44 @@ package com.example.vehiclesharingsystemserver.service;
 import com.example.vehiclesharingsystemserver.model.*;
 import com.example.vehiclesharingsystemserver.model.DTO.*;
 import com.example.vehiclesharingsystemserver.repository.*;
+import io.netty.util.concurrent.UnaryPromiseNotifier;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.stereotype.Service;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.reactive.function.BodyInserters;
+import org.springframework.web.reactive.function.client.WebClient;
+import org.springframework.web.reactive.function.client.WebClient.RequestBodySpec;
+import org.springframework.web.reactive.function.client.WebClientResponseException;
+import reactor.core.publisher.Mono;
 
-import javax.imageio.ImageIO;
+import javax.crypto.*;
+import javax.crypto.spec.PBEKeySpec;
+import javax.crypto.spec.SecretKeySpec;
 import javax.sql.rowset.serial.SerialBlob;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.ObjectInputStream;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
+import java.security.InvalidAlgorithmParameterException;
+import java.security.InvalidKeyException;
+import java.security.NoSuchAlgorithmException;
+import java.security.spec.InvalidKeySpecException;
+import java.security.spec.KeySpec;
 import java.sql.Blob;
 import java.sql.SQLException;
 import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.*;
+
+import static com.example.vehiclesharingsystemserver.service.EncryptionService.encrypt;
 
 @Service
 public class DriverOperationsService {
@@ -144,7 +166,6 @@ public class DriverOperationsService {
         if(driverActiveSubscription != null) {
             if(driverActiveSubscription.getEndDate().isBefore(LocalDateTime.now())){
                 databaseDriver.setActiveSubscription(null);
-                //activeSubscriptionRepository.delete(driverActiveSubscription);
                 message = "SUBSCRIPTION_EXPIRED";
             }else {
                return dtoConverter.fromActiveSubscriptionToDTO(driverActiveSubscription);
@@ -162,15 +183,84 @@ public class DriverOperationsService {
                 "");
     }
 
-    public String startRentalSession(RentalSessionDTO rentalSessionDTO) throws Exception {
-       var rentalSession =  dtoConverter.fromDTOtoRentalSession(rentalSessionDTO);
-           if(rentalSession != null){
+    public String startRentalSession(RentalSessionDTO rentalSessionDTO)
+            throws NoSuchAlgorithmException, InvalidKeySpecException, IllegalBlockSizeException,
+            NoSuchPaddingException, BadPaddingException, InvalidKeyException, InvalidAlgorithmParameterException {
+
+        var account = accountRepository.findByUsername(rentalSessionDTO.getDriverUsername()).orElseThrow();
+        var rentalSession = dtoConverter.fromDTOtoRentalSession(rentalSessionDTO);
+           if (rentalSession != null) {
                rentalSessionRepository.save(rentalSession);
-               return "SUCCESS:"+rentalSession.getId().toString();
-           }
-           else{
+                   var vehicleReceivedCommandStatus =
+                           sendRentalSessionTokenToVehicleController(
+                                   encrypt(rentalSession.getId().toString()),rentalSession.getVehicle().getVin());
+                   if(vehicleReceivedCommandStatus.equals("SUCCESS")) {
+                       return "SUCCESS:" + rentalSession.getId().toString();
+                   }
+                    else{
+                        rentalSessionRepository.delete(rentalSession);
+                       return "CANNOT_REACH_VEHICLE_CONTROLLER";
+                   }
+
+           } else {
                return "VEHICLE_ALREADY_IN_USE";
            }
+
+
+    }
+
+    private String getSuitablePort(String vin){
+        if(Objects.equals(vin, "4Y1SL65848Z411422")){
+            return "8081";
+        }else{
+            if(Objects.equals(vin, "4Y1SL65848Z411439")){
+                return "8082";
+            }
+        }
+        return null;
+    }
+
+    private String sendRentalSessionTokenToVehicleController(String token,String vin){
+        WebClient client = WebClient.create();
+        try {
+            String suitablePort = getSuitablePort(vin);
+            if(suitablePort!=null) {
+                return client.post()
+                        .uri(new URI("http://localhost:"+getSuitablePort(vin)+"/vehicleControllerSimulator/controller/allowConnection"))
+                        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .bodyValue(token)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            }else{
+                return "CONTROLLER_UNREACHABLE";
+            }
+        } catch (Exception e) {
+
+            return "CANNOT_REACH_VEHICLE_CONTROLLER";
+        }
+    }
+
+    private String sendConnectionClosingSignalToController(String vin){
+        WebClient client = WebClient.create();
+        try {
+            String suitablePort = getSuitablePort(vin);
+            if(suitablePort!=null) {
+                return client.delete()
+                        .uri(new URI("http://localhost:"+suitablePort+"/vehicleControllerSimulator/controller/denyConnection"))
+                        .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                        .accept(MediaType.APPLICATION_JSON)
+                        .retrieve()
+                        .bodyToMono(String.class)
+                        .block();
+            }else{
+                return "CONTROLLER_UNREACHABLE";
+            }
+        } catch (Exception e) {
+
+            return "CANNOT_REACH_VEHICLE_CONTROLLER";
+        }
     }
 
     public String endRentalSession(RentalSessionDTO rentalSessionDTO) throws NoSuchElementException{
@@ -181,33 +271,38 @@ public class DriverOperationsService {
         var vehicleRentalSession = rentalSessionRepository.findRentalSessionByDriverAndEndTime(databaseDriver,null)
                 .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_RENTAL_SESSION")));
 
-        vehicleRentalSession.setEndTime(LocalDateTime.parse(rentalSessionDTO.getEndTime()));
-        vehicleRentalSession.setCost(Double.parseDouble(rentalSessionDTO.getCost()));
-        var vehicle = vehicleRentalSession.getVehicle();
-        vehicle.setLocation(rentalSessionDTO.getLocation());
+        String responseFromController = sendConnectionClosingSignalToController(vehicleRentalSession.getVehicle().getVin());
+        if(responseFromController.equals("SUCCESS")) {
+            vehicleRentalSession.setEndTime(LocalDateTime.parse(rentalSessionDTO.getEndTime()));
+            vehicleRentalSession.setCost(Double.parseDouble(rentalSessionDTO.getCost()));
+            var vehicle = vehicleRentalSession.getVehicle();
+            vehicle.setLocation(rentalSessionDTO.getLocation());
 
-        var possiblePendingUpdate = vehiclePendingUpdateRepository.findVehiclePendingUpdateByVin(vehicle.getVin());
-        if(possiblePendingUpdate.isPresent()){
-            var pendingVehicleChangeValue = possiblePendingUpdate.get();
-            vehicle.setVin(pendingVehicleChangeValue.getVin());
-            vehicle.setRegistrationNumber(pendingVehicleChangeValue.getRegistrationNumber());
-            vehicle.setManufacturer(pendingVehicleChangeValue.getManufacturer());
-            vehicle.setModel(pendingVehicleChangeValue.getModel());
-            vehicle.setRangeLeftInKm(pendingVehicleChangeValue.getRangeLeftInKm());
-            vehicle.setYearOfManufacture(pendingVehicleChangeValue.getYearOfManufacture());
-            vehicle.setHorsePower(pendingVehicleChangeValue.getHorsePower());
-            vehicle.setTorque(pendingVehicleChangeValue.getTorque());
-            vehicle.setMaximumAuthorisedMassInKg(pendingVehicleChangeValue.getMaximumAuthorisedMassInKg());
-            vehicle.setNumberOfSeats(pendingVehicleChangeValue.getNumberOfSeats());
-            vehicle.setRentalPrice(pendingVehicleChangeValue.getRentalPrice());
-            vehicle.setRentalCompany(pendingVehicleChangeValue.getRentalCompany());
-            vehicle.setAvailable(pendingVehicleChangeValue.isAvailable());
-            vehicleRepository.save(vehicle);
-            vehiclePendingUpdateRepository.delete(pendingVehicleChangeValue);
+            var possiblePendingUpdate = vehiclePendingUpdateRepository.findVehiclePendingUpdateByVin(vehicle.getVin());
+            if (possiblePendingUpdate.isPresent()) {
+                var pendingVehicleChangeValue = possiblePendingUpdate.get();
+                vehicle.setVin(pendingVehicleChangeValue.getVin());
+                vehicle.setRegistrationNumber(pendingVehicleChangeValue.getRegistrationNumber());
+                vehicle.setManufacturer(pendingVehicleChangeValue.getManufacturer());
+                vehicle.setModel(pendingVehicleChangeValue.getModel());
+                vehicle.setRangeLeftInKm(pendingVehicleChangeValue.getRangeLeftInKm());
+                vehicle.setYearOfManufacture(pendingVehicleChangeValue.getYearOfManufacture());
+                vehicle.setHorsePower(pendingVehicleChangeValue.getHorsePower());
+                vehicle.setTorque(pendingVehicleChangeValue.getTorque());
+                vehicle.setMaximumAuthorisedMassInKg(pendingVehicleChangeValue.getMaximumAuthorisedMassInKg());
+                vehicle.setNumberOfSeats(pendingVehicleChangeValue.getNumberOfSeats());
+                vehicle.setRentalPrice(pendingVehicleChangeValue.getRentalPrice());
+                vehicle.setRentalCompany(pendingVehicleChangeValue.getRentalCompany());
+                vehicle.setAvailable(pendingVehicleChangeValue.isAvailable());
+                vehicleRepository.save(vehicle);
+                vehiclePendingUpdateRepository.delete(pendingVehicleChangeValue);
+            }
+
+            rentalSessionRepository.save(vehicleRentalSession);
+            return "SUCCESS";
+        }else{
+            return responseFromController;
         }
-
-        rentalSessionRepository.save(vehicleRentalSession);
-        return "SUCCESS";
     }
 
     public String payForRentalSession(PaymentDTO paymentDTO) throws NoSuchElementException{
@@ -218,7 +313,6 @@ public class DriverOperationsService {
             if (driverActiveSubscription != null) {
                 if (driverActiveSubscription.getEndDate().isBefore(LocalDateTime.now())) {
                     vehicleRentalSession.getDriver().setActiveSubscription(null);
-                    activeSubscriptionRepository.delete(driverActiveSubscription);
                     return "EXPIRED_SUBSCRIPTION";
                 }
             }else {

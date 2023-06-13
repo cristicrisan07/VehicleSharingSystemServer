@@ -1,7 +1,6 @@
 package com.example.vehiclesharingsystemserver.controller;
 
 import com.example.vehiclesharingsystemserver.model.DTO.*;
-import com.example.vehiclesharingsystemserver.model.Subscription;
 import com.example.vehiclesharingsystemserver.service.AdministratorOperationsService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;

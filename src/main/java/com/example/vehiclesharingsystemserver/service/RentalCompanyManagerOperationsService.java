@@ -134,8 +134,8 @@ public class RentalCompanyManagerOperationsService {
                     vehiclePendingUpdateRepository.findVehiclePendingUpdateByVin(vehicleDTO.getVin())
                             .ifPresent(vehiclePendingUpdateRepository::delete);
                     vehiclePendingUpdateRepository.save(dtoConverter.fromVehicleDTOtoVehiclePendingUpdate(vehicleDTO));
-                    return "VEHICLE CURRENTLY IN USE. UPDATES WILL BE APPLIED AFTER THE END OF THE RENTAL SESSION." +
-                            "LOCATION WON'T BE UPDATED";
+                    return "VEHICLE CURRENTLY IN USE. UPDATES WILL BE APPLIED AFTER THE END OF THE RENTAL SESSION.";
+                           // "LOCATION WON'T BE UPDATED";
                 }
             }
         }
@@ -149,6 +149,16 @@ public class RentalCompanyManagerOperationsService {
         else{
             vehicleRepository.delete(databaseVehicle.get());
             return "SUCCESS";
+        }
+    }
+
+    public String getVehicleLocation(String vin){
+        Optional<Vehicle> databaseVehicle = vehicleRepository.findVehicleByVin(vin);
+        if(databaseVehicle.isEmpty()){
+            return "ERROR: COULD_NOT_FIND_VEHICLE";
+        }
+        else{
+            return databaseVehicle.get().getLocation();
         }
     }
 }

@@ -35,7 +35,8 @@ public class SecurityConfiguration {
                 .authorizeHttpRequests()
                 .requestMatchers("/driver/register","/driver/authenticate","/driver/checkUsername"
                 ,"/administrator/register","/administrator/authenticate",
-                "manager/authenticate","driver/getAllAvailableVehicles")
+                "manager/authenticate","driver/getAllAvailableVehicles","vehicle/getCurrentRentalSession",
+                 "/vehicle/setCurrentLocation","/vehicle/getCurrentLocation")
                 .permitAll()
                 .anyRequest()
                 .authenticated()
