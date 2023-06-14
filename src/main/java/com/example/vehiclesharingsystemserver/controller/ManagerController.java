@@ -1,7 +1,6 @@
 package com.example.vehiclesharingsystemserver.controller;
 
 import com.example.vehiclesharingsystemserver.model.DTO.*;
-import com.example.vehiclesharingsystemserver.model.Vehicle;
 import com.example.vehiclesharingsystemserver.service.RentalCompanyManagerOperationsService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -44,9 +43,9 @@ public class ManagerController {
         return ResponseEntity.ok(rentalCompanyManagerOperationsService.updateVehicle(vehicleDTO));
     }
     @PostMapping("/manager/performEmergencyAction")
-    public ResponseEntity<String> performEmergencyAction(@RequestBody EmergencyActionDTO emergencyActionDTO){
+    public ResponseEntity<String> performEmergencyAction(@RequestBody EmergencyActionDTOForWeb emergencyActionDTOForWeb){
         try{
-           String status = rentalCompanyManagerOperationsService.createEmergencyIntervention(emergencyActionDTO);
+           String status = rentalCompanyManagerOperationsService.createEmergencyIntervention(emergencyActionDTOForWeb);
            return ResponseEntity.ok(status);
         }catch (Exception e){
             return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(e.getMessage());

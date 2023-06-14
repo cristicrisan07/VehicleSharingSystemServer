@@ -204,5 +204,9 @@ public class DTOConverter {
         }
         return null;
     }
+
+    public EmergencyActionDTOForController fromEmergencyToControllerDTO(EmergencyIntervention emergencyIntervention){
+        return new EmergencyActionDTOForController(emergencyIntervention.getAction(), emergencyIntervention.getReason(),emergencyIntervention.getIssue_time().toString());
+    }
 }
 

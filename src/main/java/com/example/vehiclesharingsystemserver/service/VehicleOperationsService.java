@@ -1,6 +1,8 @@
 package com.example.vehiclesharingsystemserver.service;
 
+import com.example.vehiclesharingsystemserver.model.DTO.EmergencyActionDTOForController;
 import com.example.vehiclesharingsystemserver.model.DTO.VehicleControllerLocationDTO;
+import com.example.vehiclesharingsystemserver.model.DTO.VehicleControllerStateDTO;
 import com.example.vehiclesharingsystemserver.repository.RentalSessionRepository;
 import com.example.vehiclesharingsystemserver.repository.VehicleRepository;
 import org.springframework.stereotype.Service;
@@ -8,15 +10,11 @@ import org.springframework.stereotype.Service;
 import javax.crypto.BadPaddingException;
 import javax.crypto.IllegalBlockSizeException;
 import javax.crypto.NoSuchPaddingException;
-import javax.crypto.SecretKey;
-import javax.crypto.spec.SecretKeySpec;
 import java.security.InvalidAlgorithmParameterException;
 import java.security.InvalidKeyException;
 import java.security.NoSuchAlgorithmException;
 import java.security.spec.InvalidKeySpecException;
 import java.time.LocalDateTime;
-import java.util.Base64;
-import java.util.HashMap;
 import java.util.NoSuchElementException;
 import java.util.Objects;
 
@@ -26,10 +24,12 @@ import static com.example.vehiclesharingsystemserver.service.EncryptionService.e
 public class VehicleOperationsService {
     private final VehicleRepository vehicleRepository;
     private final RentalSessionRepository rentalSessionRepository;
+    private final DTOConverter dtoConverter;
 
-    public VehicleOperationsService(VehicleRepository vehicleRepository, RentalSessionRepository rentalSessionRepository, JwtService jwtService) {
+    public VehicleOperationsService(VehicleRepository vehicleRepository, RentalSessionRepository rentalSessionRepository, JwtService jwtService, DTOConverter dtoConverter) {
         this.vehicleRepository = vehicleRepository;
         this.rentalSessionRepository = rentalSessionRepository;
+        this.dtoConverter = dtoConverter;
     }
 
 
@@ -44,16 +44,17 @@ public class VehicleOperationsService {
         return null;
     }
 
-    public String getCurrentRentalSession(String vin) throws NoSuchElementException, NoSuchAlgorithmException, InvalidKeySpecException, IllegalBlockSizeException, NoSuchPaddingException, BadPaddingException, InvalidKeyException, InvalidAlgorithmParameterException {
+    public VehicleControllerStateDTO getCurrentRentalSession(String vin) throws NoSuchElementException, NoSuchAlgorithmException, InvalidKeySpecException, IllegalBlockSizeException, NoSuchPaddingException, BadPaddingException, InvalidKeyException, InvalidAlgorithmParameterException {
         var databaseVehicle = vehicleRepository.findVehicleByVin(vin)
                 .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_VEHICLE")));
         var vehicleRentalSession = rentalSessionRepository
                 .findRentalSessionByVehicleAndEndTime(databaseVehicle,null);
-        return vehicleRentalSession.isPresent()
-                ?
-                encrypt(vehicleRentalSession.get().getId().toString())
-                :
-                "NOT_RENTED" ;
+
+        return new VehicleControllerStateDTO(vehicleRentalSession.isPresent()
+                ? encrypt(vehicleRentalSession.get().getId().toString())
+                : "NOT_RENTED",
+                getEmergencyInterventionStatusDTOForController(vin));
+
     }
 
     public String setCurrentLocation(VehicleControllerLocationDTO vehicleControllerLocationDTO){
@@ -74,5 +75,14 @@ public class VehicleOperationsService {
         var databaseVehicle = vehicleRepository.findVehicleByVin(vin)
                 .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_VEHICLE")));
         return databaseVehicle.getLocation();
+    }
+
+    public EmergencyActionDTOForController getEmergencyInterventionStatusDTOForController(String vin){
+        var databaseVehicle = vehicleRepository.findVehicleByVin(vin)
+                .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_VEHICLE")));
+        return databaseVehicle.getEmergencyInterventions().stream()
+                .filter(obj->obj.getAction().equals("LIMP_MODE") && obj.getStatus().equals("ISSUED"))
+                .findFirst().map(dtoConverter::fromEmergencyToControllerDTO).orElse(new EmergencyActionDTOForController("NONE","",""));
+
     }
 }

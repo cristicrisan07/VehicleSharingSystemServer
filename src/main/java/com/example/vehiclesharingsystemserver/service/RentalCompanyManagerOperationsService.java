@@ -5,7 +5,6 @@ import com.example.vehiclesharingsystemserver.model.DTO.*;
 import com.example.vehiclesharingsystemserver.model.EmergencyIntervention;
 import com.example.vehiclesharingsystemserver.model.Vehicle;
 import com.example.vehiclesharingsystemserver.repository.*;
-import org.json.simple.JSONObject;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.authentication.AuthenticationManager;
@@ -136,17 +135,30 @@ public class RentalCompanyManagerOperationsService {
                         emergency_actions.stream().anyMatch
                                 (obj->obj.getAction().equals("LIMP_MODE") && obj.getStatus().equals("ISSUED"))){
 
-                    databaseVehicle.get().setAvailable(vehicleDTO.isAvailable());
-                    emergency_actions.stream()
-                            .filter(it->it.getAction().equals("LIMP_MODE") && it.getStatus().equals("ISSUED"))
-                            .forEach(it->{
-                                it.setStatus("SOLVED");
-                                it.setSolution_time(LocalDateTime.now());
-                                emergencyInterventionRepository.save(it);
-                            });
+                    var solvedTime = LocalDateTime.now();
+                    var controllerResponse = sendEmergencyActionToController(
+                            new EmergencyIntervention(
+                                    databaseVehicle.get(),
+                                    solvedTime,
+                                    null,
+                                    "NORMAL",
+                                    "SOLVED",
+                                    "SOLVED"));
+                    if(Objects.equals(controllerResponse,"SUCCESS")) {
+                        databaseVehicle.get().setAvailable(vehicleDTO.isAvailable());
+                        emergency_actions.stream()
+                                .filter(it -> it.getAction().equals("LIMP_MODE") && it.getStatus().equals("ISSUED"))
+                                .forEach(it -> {
+                                    it.setStatus("SOLVED");
+                                    it.setSolution_time(solvedTime);
+                                    emergencyInterventionRepository.save(it);
+                                });
 
-                    vehicleRepository.save(databaseVehicle.get());
-                    emergencyInterventionSolvedMessage = ";ISSUE MARKED AS SOLVED";
+                        vehicleRepository.save(databaseVehicle.get());
+                        emergencyInterventionSolvedMessage = "ISSUE MARKED AS SOLVED";
+                    }else{
+                        return controllerResponse;
+                    }
                 }
                 var databaseUnfinishedRentalSession = rentalSessionRepository.findRentalSessionByVehicleAndEndTime(databaseVehicle.get(),null);
                 if(databaseUnfinishedRentalSession.isEmpty()) {
@@ -199,14 +211,17 @@ public class RentalCompanyManagerOperationsService {
         try {
             String suitablePort = getSuitablePort(emergencyIntervention.getVehicle().getVin());
             if(suitablePort!=null) {
-                JSONObject emergencyActionDTO = new JSONObject();
-                emergencyActionDTO.put("action",emergencyIntervention.getAction());
-                emergencyActionDTO.put("reason",emergencyIntervention.getReason());
                 return client.post()
-                        .uri(new URI("http://localhost:"+suitablePort+"/vehicleControllerSimulator/controller/performEmergencyAction"))
+                        .uri(new URI(
+                                "http://localhost:"+
+                                        suitablePort+
+                                        "/vehicleControllerSimulator/controller/performEmergencyAction"))
                         .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                         .accept(MediaType.APPLICATION_JSON)
-                        .bodyValue(emergencyActionDTO)
+                        .bodyValue(new EmergencyActionDTOForController(
+                                emergencyIntervention.getAction(),
+                                emergencyIntervention.getReason(),
+                                LocalDateTime.now().toString()))
                         .retrieve()
                         .bodyToMono(String.class)
                         .block();
@@ -219,19 +234,19 @@ public class RentalCompanyManagerOperationsService {
         }
     }
 
-    public String createEmergencyIntervention(EmergencyActionDTO emergencyActionDTO){
-        var account = accountRepository.findByUsername(emergencyActionDTO.getUsername())
+    public String createEmergencyIntervention(EmergencyActionDTOForWeb emergencyActionDTOForWeb){
+        var account = accountRepository.findByUsername(emergencyActionDTOForWeb.getUsername())
                 .orElseThrow(()->new NoSuchElementException("MANAGER_NOT_FOUND"));
         var databaseManager = rentalCompanyManagerRepository.findRentalCompanyManagerByAccount(account)
                 .orElseThrow(()->new NoSuchElementException("MANAGER_NOT_FOUND"));
-        var databaseVehicle = vehicleRepository.findVehicleByVin(emergencyActionDTO.getVin())
+        var databaseVehicle = vehicleRepository.findVehicleByVin(emergencyActionDTOForWeb.getVin())
                 .orElseThrow(() -> new NoSuchElementException(("NO_SUCH_VEHICLE")));
-        if(Objects.equals(emergencyActionDTO.getAction(),"LIMP_MODE")){
+        if(Objects.equals(emergencyActionDTOForWeb.getAction(),"LIMP_MODE")){
             var emergencyIntervention = new EmergencyIntervention
                     (databaseVehicle,
                     LocalDateTime.now(),
                     databaseManager,
-                    emergencyActionDTO.getAction(),
+                    emergencyActionDTOForWeb.getAction(),
                     "SUSPICIOUS_ACTIVITY",
                     "ISSUED");
             String response = sendEmergencyActionToController(emergencyIntervention);
