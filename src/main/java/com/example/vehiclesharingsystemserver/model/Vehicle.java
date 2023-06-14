@@ -37,6 +37,7 @@ public class Vehicle {
     private int numberOfSeats;
     @Column(nullable = false)
     private String location;
+    @Column
     private LocalDateTime lastLocationReading;
     @ManyToOne
     private RentalPrice rentalPrice;
@@ -44,6 +45,8 @@ public class Vehicle {
     private Blob image;
     @OneToMany(mappedBy = "vehicle")
     private Set<RentalSession> rentalSessions;
+    @OneToMany(mappedBy = "vehicle")
+    private Set<EmergencyIntervention> emergencyInterventions;
     @ManyToOne
     private Company rentalCompany;
     @Column(nullable = false)
@@ -214,6 +217,14 @@ public class Vehicle {
 
     public void setLastLocationReading(LocalDateTime lastLocationReading) {
         this.lastLocationReading = lastLocationReading;
+    }
+
+    public Set<EmergencyIntervention> getEmergencyInterventions() {
+        return emergencyInterventions;
+    }
+
+    public void setEmergencyInterventions(Set<EmergencyIntervention> emergencyInterventions) {
+        this.emergencyInterventions = emergencyInterventions;
     }
 }
 

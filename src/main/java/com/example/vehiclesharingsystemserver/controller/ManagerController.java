@@ -1,9 +1,6 @@
 package com.example.vehiclesharingsystemserver.controller;
 
-import com.example.vehiclesharingsystemserver.model.DTO.AccountDTO;
-import com.example.vehiclesharingsystemserver.model.DTO.LoggedInManagerDTO;
-import com.example.vehiclesharingsystemserver.model.DTO.RentalCompanyManagerDTO;
-import com.example.vehiclesharingsystemserver.model.DTO.VehicleDTO;
+import com.example.vehiclesharingsystemserver.model.DTO.*;
 import com.example.vehiclesharingsystemserver.model.Vehicle;
 import com.example.vehiclesharingsystemserver.service.RentalCompanyManagerOperationsService;
 import org.springframework.http.HttpStatus;
@@ -46,6 +43,26 @@ public class ManagerController {
     public ResponseEntity<String> updateVehicle(@RequestBody VehicleDTO vehicleDTO){
         return ResponseEntity.ok(rentalCompanyManagerOperationsService.updateVehicle(vehicleDTO));
     }
+    @PostMapping("/manager/performEmergencyAction")
+    public ResponseEntity<String> performEmergencyAction(@RequestBody EmergencyActionDTO emergencyActionDTO){
+        try{
+           String status = rentalCompanyManagerOperationsService.createEmergencyIntervention(emergencyActionDTO);
+           return ResponseEntity.ok(status);
+        }catch (Exception e){
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(e.getMessage());
+        }
+    }
+
+    @GetMapping("/manager/getEmergencyInterventionStatus/{vin}")
+    public ResponseEntity<String> getEmergencyInterventionStatus(@PathVariable String vin){
+        try{
+            String status = rentalCompanyManagerOperationsService.getEmergencyInterventionStatus(vin);
+            return ResponseEntity.ok(status);
+        }catch (Exception e){
+            return ResponseEntity.status(HttpStatus.UNPROCESSABLE_ENTITY).body(e.getMessage());
+        }
+    }
+
     @DeleteMapping("/manager/deleteVehicle/{vin}")
     public ResponseEntity<String> deleteVehicle(@PathVariable String vin){
         return ResponseEntity.ok(rentalCompanyManagerOperationsService.deleteVehicle(vin));

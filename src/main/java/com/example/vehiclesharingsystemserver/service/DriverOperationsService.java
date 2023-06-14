@@ -41,6 +41,7 @@ import java.time.temporal.ChronoUnit;
 import java.util.*;
 
 import static com.example.vehiclesharingsystemserver.service.EncryptionService.encrypt;
+import static com.example.vehiclesharingsystemserver.service.VehicleOperationsService.getSuitablePort;
 
 @Service
 public class DriverOperationsService {
@@ -209,16 +210,7 @@ public class DriverOperationsService {
 
     }
 
-    private String getSuitablePort(String vin){
-        if(Objects.equals(vin, "4Y1SL65848Z411422")){
-            return "8081";
-        }else{
-            if(Objects.equals(vin, "4Y1SL65848Z411439")){
-                return "8082";
-            }
-        }
-        return null;
-    }
+
 
     private String sendRentalSessionTokenToVehicleController(String token,String vin){
         WebClient client = WebClient.create();
@@ -281,6 +273,9 @@ public class DriverOperationsService {
             var possiblePendingUpdate = vehiclePendingUpdateRepository.findVehiclePendingUpdateByVin(vehicle.getVin());
             if (possiblePendingUpdate.isPresent()) {
                 var pendingVehicleChangeValue = possiblePendingUpdate.get();
+                var availabilityValue = vehicle.getEmergencyInterventions().stream()
+                        .noneMatch(obj -> obj.getAction().equals("LIMP_MODE") && obj.getStatus().equals("ISSUED"))
+                        && pendingVehicleChangeValue.isAvailable();
                 vehicle.setVin(pendingVehicleChangeValue.getVin());
                 vehicle.setRegistrationNumber(pendingVehicleChangeValue.getRegistrationNumber());
                 vehicle.setManufacturer(pendingVehicleChangeValue.getManufacturer());
@@ -293,7 +288,7 @@ public class DriverOperationsService {
                 vehicle.setNumberOfSeats(pendingVehicleChangeValue.getNumberOfSeats());
                 vehicle.setRentalPrice(pendingVehicleChangeValue.getRentalPrice());
                 vehicle.setRentalCompany(pendingVehicleChangeValue.getRentalCompany());
-                vehicle.setAvailable(pendingVehicleChangeValue.isAvailable());
+                vehicle.setAvailable(availabilityValue);
                 vehicleRepository.save(vehicle);
                 vehiclePendingUpdateRepository.delete(pendingVehicleChangeValue);
             }

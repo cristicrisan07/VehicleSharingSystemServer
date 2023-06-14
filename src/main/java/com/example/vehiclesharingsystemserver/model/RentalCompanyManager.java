@@ -1,6 +1,8 @@
 package com.example.vehiclesharingsystemserver.model;
 
 import jakarta.persistence.*;
+
+import java.util.Set;
 import java.util.UUID;
 
 @Entity
@@ -12,6 +14,8 @@ public class RentalCompanyManager extends User{
     private UUID id;
     @ManyToOne
     private Company company;
+    @OneToMany(mappedBy = "rentalCompanyManager")
+    private Set<EmergencyIntervention> emergencyInterventions;
 
     public RentalCompanyManager(String firstName, String lastName, Account account,Company company) {
         super(firstName, lastName, account);

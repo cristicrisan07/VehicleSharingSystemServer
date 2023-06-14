@@ -18,6 +18,7 @@ import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.NoSuchElementException;
+import java.util.Objects;
 
 import static com.example.vehiclesharingsystemserver.service.EncryptionService.encrypt;
 
@@ -29,6 +30,18 @@ public class VehicleOperationsService {
     public VehicleOperationsService(VehicleRepository vehicleRepository, RentalSessionRepository rentalSessionRepository, JwtService jwtService) {
         this.vehicleRepository = vehicleRepository;
         this.rentalSessionRepository = rentalSessionRepository;
+    }
+
+
+    public static String getSuitablePort(String vin){
+        if(Objects.equals(vin, "4Y1SL65848Z411422")){
+            return "8081";
+        }else{
+            if(Objects.equals(vin, "4Y1SL65848Z411439")){
+                return "8082";
+            }
+        }
+        return null;
     }
 
     public String getCurrentRentalSession(String vin) throws NoSuchElementException, NoSuchAlgorithmException, InvalidKeySpecException, IllegalBlockSizeException, NoSuchPaddingException, BadPaddingException, InvalidKeyException, InvalidAlgorithmParameterException {
