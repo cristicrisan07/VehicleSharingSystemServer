@@ -137,6 +137,23 @@ public class DTOConverter {
                 vehicle.isAvailable());
     }
 
+    public VehicleDTO fromVehicleToDTO(VehiclePendingUpdate vehicle){
+        return new VehicleDTO(vehicle.getVin(),
+                vehicle.getRegistrationNumber(),
+                vehicle.getManufacturer(),
+                vehicle.getModel(),
+                String.valueOf(vehicle.getRangeLeftInKm()),
+                String.valueOf(vehicle.getYearOfManufacture()),
+                String.valueOf(vehicle.getHorsePower()),
+                String.valueOf(vehicle.getTorque()),
+                String.valueOf(vehicle.getMaximumAuthorisedMassInKg()),
+                String.valueOf(vehicle.getNumberOfSeats()),
+                String.valueOf(vehicle.getLocation()),
+                fromRentalPriceToDTO(vehicle.getRentalPrice()),
+                vehicle.getRentalCompany().getName(),
+                vehicle.isAvailable());
+    }
+
     public ActiveSubscriptionDTO fromActiveSubscriptionToDTO(ActiveSubscription activeSubscription){
         return new ActiveSubscriptionDTO(activeSubscription.getId().toString(),
                 fromSubscriptionToDTO(activeSubscription.getSubscription()),

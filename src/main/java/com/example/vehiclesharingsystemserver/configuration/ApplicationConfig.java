@@ -1,6 +1,7 @@
 package com.example.vehiclesharingsystemserver.configuration;
 
 import com.example.vehiclesharingsystemserver.repository.AccountRepository;
+import com.example.vehiclesharingsystemserver.service.JwtService;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.converter.ByteArrayHttpMessageConverter;
@@ -56,7 +57,5 @@ public class ApplicationConfig {
     public ByteArrayHttpMessageConverter byteArrayHttpMessageConverter() {
         return new ByteArrayHttpMessageConverter();
     }
-
-
 
 }

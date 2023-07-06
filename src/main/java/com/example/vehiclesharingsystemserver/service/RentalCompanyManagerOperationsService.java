@@ -98,6 +98,8 @@ public class RentalCompanyManagerOperationsService {
                     var availabilityValue = vehicle.getEmergencyInterventions().stream()
                             .noneMatch(obj -> obj.getAction().equals("LIMP_MODE") && obj.getStatus().equals("ISSUED"))
                             && pendingVehicleChangeValue.isAvailable();
+                    //comment availablitity for tests
+                    //put false on available field
                     vehicles.add(new Vehicle(pendingVehicleChangeValue.getVin(),
                             pendingVehicleChangeValue.getRegistrationNumber(),
                             pendingVehicleChangeValue.getManufacturer(),
@@ -211,6 +213,10 @@ public class RentalCompanyManagerOperationsService {
         try {
             String suitablePort = getSuitablePort(emergencyIntervention.getVehicle().getVin());
             if(suitablePort!=null) {
+                var eadfc = new EmergencyActionDTOForController(
+                        emergencyIntervention.getAction(),
+                        emergencyIntervention.getReason(),
+                        LocalDateTime.now().toString());
                 return client.post()
                         .uri(new URI(
                                 "http://localhost:"+
@@ -218,10 +224,7 @@ public class RentalCompanyManagerOperationsService {
                                         "/vehicleControllerSimulator/controller/performEmergencyAction"))
                         .header(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
                         .accept(MediaType.APPLICATION_JSON)
-                        .bodyValue(new EmergencyActionDTOForController(
-                                emergencyIntervention.getAction(),
-                                emergencyIntervention.getReason(),
-                                LocalDateTime.now().toString()))
+                        .bodyValue(eadfc)
                         .retrieve()
                         .bodyToMono(String.class)
                         .block();

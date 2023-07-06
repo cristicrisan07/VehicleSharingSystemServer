@@ -26,7 +26,7 @@ public class VehicleOperationsService {
     private final RentalSessionRepository rentalSessionRepository;
     private final DTOConverter dtoConverter;
 
-    public VehicleOperationsService(VehicleRepository vehicleRepository, RentalSessionRepository rentalSessionRepository, JwtService jwtService, DTOConverter dtoConverter) {
+    public VehicleOperationsService(VehicleRepository vehicleRepository, RentalSessionRepository rentalSessionRepository, DTOConverter dtoConverter) {
         this.vehicleRepository = vehicleRepository;
         this.rentalSessionRepository = rentalSessionRepository;
         this.dtoConverter = dtoConverter;
